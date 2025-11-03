@@ -6,6 +6,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { randomUUID } from "crypto";
 import {
     logClientMessage,
+    logServerMessage,
     logSessionInitialized,
     logSessionClosed,
     logSessionRequestFailed,
@@ -33,9 +34,6 @@ app.post("/mcp", async (req, res) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
     let transport: StreamableHTTPServerTransport;
 
-    // Log incoming client message
-    logClientMessage(sessionId, req.body);
-
     if (sessionId && transports[sessionId]) {
         // A session already exists; reuse the existing transport.
         console.log(
@@ -57,6 +55,18 @@ app.post("/mcp", async (req, res) => {
                 logSessionInitialized(sid, Object.keys(transports).length);
             },
         });
+
+        // Log incoming messages from the client
+        transport.onmessage = (message) => {
+            logClientMessage(transport.sessionId, message);
+        };
+
+        // Wrap the transport's send method to log outgoing messages
+        const originalSend = transport.send.bind(transport);
+        transport.send = async (message, options) => {
+            logServerMessage(transport.sessionId, message);
+            return originalSend(message, options);
+        };
 
         // Clean up the transport from our map when the session closes.
         transport.onclose = () => {

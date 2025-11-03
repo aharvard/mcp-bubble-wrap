@@ -61,8 +61,8 @@ export const logClientMessage = (
     const isNewSession = !sessionId;
 
     const title = isNewSession
-        ? chalk.bold.white("📨 MCP Client Message ") + chalk.yellow("(NEW)")
-        : chalk.bold.white("📨 MCP Client Message");
+        ? chalk.bold.white("📨 Client → Server ") + chalk.yellow("(NEW)")
+        : chalk.bold.white("📨 Client → Server");
 
     logBox(
         title,
@@ -79,6 +79,39 @@ export const logClientMessage = (
                 .map((line) => `  ${line}`),
         ],
         chalk.blue
+    );
+};
+
+/**
+ * Logs an outgoing MCP server message
+ */
+export const logServerMessage = (
+    sessionId: string | undefined,
+    messageBody: any
+) => {
+    const messageType =
+        messageBody.method ||
+        (messageBody.result
+            ? "result"
+            : messageBody.error
+            ? "error"
+            : "unknown");
+
+    logBox(
+        chalk.bold.white("📤 Server → Client"),
+        [
+            `${chalk.blue("Session:")} ${
+                sessionId
+                    ? chalk.green(sessionId.substring(0, 20) + "...")
+                    : chalk.yellow("(no session)")
+            }`,
+            `${chalk.blue("Type:")} ${chalk.cyan(messageType)}`,
+            `${chalk.blue("Payload:")}`,
+            ...formatJSON(messageBody)
+                .split("\n")
+                .map((line) => `  ${line}`),
+        ],
+        chalk.cyan
     );
 };
 
