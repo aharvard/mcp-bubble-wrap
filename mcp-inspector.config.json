@@ -6,7 +6,7 @@
         },
         "production-server": {
             "type": "streamable-http",
-            "url": "https:/tbd.com/mcp"
+            "url": "https://mcp-bubble-wrap.onrender.com/mcp"
         }
     }
 }

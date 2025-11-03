@@ -7,9 +7,9 @@
     "scripts": {
         "build": "tsc",
         "start": "node dist/index.js",
-        "dev": "concurrently \"vite-node src/index.ts\" \"pnpm inspect\"",
-        "inspect": "npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server local-server",
-        "inspect:production": "npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server production-server"
+        "dev": "concurrently \"vite-node src/index.ts\" \"pnpm inspect:dev\"",
+        "inspect:dev": "npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server local-server",
+        "inspect:prod": "npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server production-server"
     },
     "keywords": [],
     "author": "",
