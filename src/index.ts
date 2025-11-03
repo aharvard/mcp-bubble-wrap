@@ -1,10 +1,17 @@
 import express from "express";
 import cors from "cors";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import chalk from "chalk";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { createUIResource } from "@mcp-ui/server";
 import { randomUUID } from "crypto";
+import {
+    logClientMessage,
+    logSessionInitialized,
+    logSessionClosed,
+    logSessionRequestFailed,
+    logServerStarted,
+} from "./utils/logger.js";
+import { initMcpServer } from "./mcp/server.js";
 
 const app = express();
 const port = process.env.PORT || 5678;
@@ -27,67 +34,43 @@ app.post("/mcp", async (req, res) => {
     let transport: StreamableHTTPServerTransport;
 
     // Log incoming client message
-    console.log("=== MCP Client Message ===");
-    console.log("Session ID:", sessionId || "(new session)");
-    console.log("Message type:", req.body.method || req.body.jsonrpc);
-    console.log("Full message:", JSON.stringify(req.body, null, 2));
-    console.log("========================");
+    logClientMessage(sessionId, req.body);
 
     if (sessionId && transports[sessionId]) {
         // A session already exists; reuse the existing transport.
-        console.log(`Reusing existing transport for session: ${sessionId}`);
+        console.log(
+            chalk.gray(
+                `♻️  Reusing transport for session: ${sessionId.substring(
+                    0,
+                    20
+                )}...`
+            )
+        );
         transport = transports[sessionId];
     } else if (!sessionId && isInitializeRequest(req.body)) {
         // This is a new initialization request. Create a new transport.
-        console.log("Creating new MCP session (initialize request)");
+        console.log(chalk.yellow("🔄 Creating new MCP session..."));
         transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             onsessioninitialized: (sid) => {
                 transports[sid] = transport;
-                console.log(`✓ MCP Session initialized: ${sid}`);
+                logSessionInitialized(sid, Object.keys(transports).length);
             },
         });
 
         // Clean up the transport from our map when the session closes.
         transport.onclose = () => {
             if (transport.sessionId) {
-                console.log(`✗ MCP Session closed: ${transport.sessionId}`);
+                logSessionClosed(
+                    transport.sessionId,
+                    Object.keys(transports).length - 1
+                );
                 delete transports[transport.sessionId];
             }
         };
 
-        // Create a new server instance for this specific session.
-        const server = new McpServer({
-            name: "typescript-server-demo",
-            version: "1.0.0",
-        });
-
-        // Register our tool on the new server instance.
-        server.registerTool(
-            "greet",
-            {
-                title: "Greet",
-                description:
-                    "Creates a UI resource displaying an external URL (example.com).",
-                inputSchema: {},
-            },
-            async () => {
-                // Create the UI resource to be returned to the client
-                // This is the only MCP-UI specific code in this example
-                const uiResource = createUIResource({
-                    uri: "ui://greeting",
-                    content: {
-                        type: "externalUrl",
-                        iframeUrl: "https://example.com",
-                    },
-                    encoding: "text",
-                });
-
-                return {
-                    content: [uiResource],
-                };
-            }
-        );
+        // Create and configure the MCP server for this session
+        const server = initMcpServer();
 
         // Connect the server instance to the transport for this session.
         await server.connect(transport);
@@ -107,17 +90,25 @@ const handleSessionRequest = async (
     res: express.Response
 ) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    console.log(`=== MCP ${req.method} Request ===`);
-    console.log("Session ID:", sessionId || "(missing)");
+    const methodIcon = req.method === "GET" ? "📥" : "🗑️";
+    const methodColor = req.method === "GET" ? chalk.cyan : chalk.red;
 
     if (!sessionId || !transports[sessionId]) {
-        console.log("❌ Session not found");
-        console.log("========================");
+        logSessionRequestFailed(
+            req.method,
+            sessionId,
+            Object.keys(transports).length
+        );
         return res.status(404).send("Session not found");
     }
 
-    console.log(`✓ Handling ${req.method} request for session: ${sessionId}`);
-    console.log("========================");
+    console.log(
+        methodColor(
+            `${methodIcon} ${
+                req.method
+            } request for session: ${sessionId.substring(0, 20)}...`
+        )
+    );
 
     const transport = transports[sessionId];
     await transport.handleRequest(req, res);
@@ -130,5 +121,5 @@ app.get("/mcp", handleSessionRequest);
 app.delete("/mcp", handleSessionRequest);
 
 app.listen(port, () => {
-    console.log(`TypeScript MCP server listening at http://localhost:${port}`);
+    logServerStarted(port);
 });

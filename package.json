@@ -17,8 +17,11 @@
     "dependencies": {
         "@mcp-ui/server": "^5.2.0",
         "@modelcontextprotocol/sdk": "^1.18.2",
+        "chalk": "^5.6.2",
         "cors": "^2.8.5",
-        "express": "^5.0.1"
+        "express": "^5.0.1",
+        "string-width": "^8.1.0",
+        "strip-ansi": "^7.1.2"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",
