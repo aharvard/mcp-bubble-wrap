@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "local-server": {
+            "type": "streamable-http",
+            "url": "http://localhost:5678/mcp"
+        },
+        "production-server": {
+            "type": "streamable-http",
+            "url": "https:/tbd.com/mcp"
+        }
+    }
+}

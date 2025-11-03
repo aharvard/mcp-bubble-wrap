@@ -1,0 +1,33 @@
+{
+    "name": "typescript-server-demo",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Barebones TypeScript Model Context Protocol server demo.",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "dev": "concurrently \"vite-node src/index.ts\" \"pnpm inspect\"",
+        "inspect": "npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server local-server",
+        "inspect:production": "npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server production-server"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@mcp-ui/server": "^5.2.0",
+        "@modelcontextprotocol/sdk": "^1.18.2",
+        "cors": "^2.8.5",
+        "express": "^5.0.1"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.13.10",
+        "concurrently": "^9.1.2",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.8.2",
+        "vite": "^6.2.2",
+        "vite-node": "^1.0.7"
+    }
+}
