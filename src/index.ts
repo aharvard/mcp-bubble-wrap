@@ -26,23 +26,32 @@ app.post("/mcp", async (req, res) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
     let transport: StreamableHTTPServerTransport;
 
+    // Log incoming client message
+    console.log("=== MCP Client Message ===");
+    console.log("Session ID:", sessionId || "(new session)");
+    console.log("Message type:", req.body.method || req.body.jsonrpc);
+    console.log("Full message:", JSON.stringify(req.body, null, 2));
+    console.log("========================");
+
     if (sessionId && transports[sessionId]) {
         // A session already exists; reuse the existing transport.
+        console.log(`Reusing existing transport for session: ${sessionId}`);
         transport = transports[sessionId];
     } else if (!sessionId && isInitializeRequest(req.body)) {
         // This is a new initialization request. Create a new transport.
+        console.log("Creating new MCP session (initialize request)");
         transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             onsessioninitialized: (sid) => {
                 transports[sid] = transport;
-                console.log(`MCP Session initialized: ${sid}`);
+                console.log(`✓ MCP Session initialized: ${sid}`);
             },
         });
 
         // Clean up the transport from our map when the session closes.
         transport.onclose = () => {
             if (transport.sessionId) {
-                console.log(`MCP Session closed: ${transport.sessionId}`);
+                console.log(`✗ MCP Session closed: ${transport.sessionId}`);
                 delete transports[transport.sessionId];
             }
         };
@@ -98,10 +107,17 @@ const handleSessionRequest = async (
     res: express.Response
 ) => {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    console.log("sessionId", sessionId);
+    console.log(`=== MCP ${req.method} Request ===`);
+    console.log("Session ID:", sessionId || "(missing)");
+
     if (!sessionId || !transports[sessionId]) {
+        console.log("❌ Session not found");
+        console.log("========================");
         return res.status(404).send("Session not found");
     }
+
+    console.log(`✓ Handling ${req.method} request for session: ${sessionId}`);
+    console.log("========================");
 
     const transport = transports[sessionId];
     await transport.handleRequest(req, res);
