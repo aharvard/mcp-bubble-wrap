@@ -129,9 +129,7 @@ export const logClientMessage = (
     title,
     [
       `${chalk.blue("Session:")} ${
-        sessionId
-          ? chalk.green(sessionId.substring(0, 20) + "...")
-          : chalk.yellow("(initializing)")
+        sessionId ? chalk.green(sessionId) : chalk.yellow("(initializing)")
       }`,
       `${chalk.blue("Method:")} ${chalk.magenta(messageType)}`,
       `${chalk.blue("Payload:")}`,
@@ -158,9 +156,7 @@ export const logServerMessage = (
     chalk.bold.white("📤 Server → Client"),
     [
       `${chalk.blue("Session:")} ${
-        sessionId
-          ? chalk.green(sessionId.substring(0, 20) + "...")
-          : chalk.yellow("(no session)")
+        sessionId ? chalk.green(sessionId) : chalk.yellow("(no session)")
       }`,
       `${chalk.blue("Type:")} ${chalk.cyan(messageType)}`,
       `${chalk.blue("Payload:")}`,

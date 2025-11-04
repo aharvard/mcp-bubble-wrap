@@ -47,11 +47,7 @@ app.post("/mcp", async (req, res) => {
 
   if (sessionId && transports[sessionId]) {
     // A session already exists; reuse the existing transport.
-    console.log(
-      chalk.gray(
-        `♻️  Reusing transport for session: ${sessionId.substring(0, 20)}...`
-      )
-    )
+    console.log(chalk.gray(`♻️  Reusing transport for session: ${sessionId}`))
     transport = transports[sessionId]
   } else if (!sessionId && isInitializeRequest(req.body)) {
     // This is a new initialization request. Create a new transport.
@@ -121,11 +117,7 @@ const handleSessionRequest = async (
   }
 
   console.log(
-    methodColor(
-      `${methodIcon} ${
-        req.method
-      } request for session: ${sessionId.substring(0, 20)}...`
-    )
+    methodColor(`${methodIcon} ${req.method} request for session: ${sessionId}`)
   )
 
   const transport = transports[sessionId]
