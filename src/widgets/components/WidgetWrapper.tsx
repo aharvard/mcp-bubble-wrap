@@ -34,7 +34,7 @@ interface WidgetWrapperProps {
 export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
   children,
   className = "",
-  applyMaxHeight = true,
+  applyMaxHeight = false,
   applySafeArea = false,
   backgroundColor,
   forceTheme,

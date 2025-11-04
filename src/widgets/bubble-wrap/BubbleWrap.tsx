@@ -26,7 +26,7 @@ export function BubbleWrap() {
   // }
 
   return (
-    <WidgetWrapper applyMaxHeight={true}>
+    <WidgetWrapper>
       <div className="bubble-wrap-container">
         <div className="header">
           <h1>🫧 Bubble Wrap Simulator 🫧</h1>
