@@ -242,14 +242,9 @@ export function initMcpServer(): McpServer {
             inputSchema: {
                 bubbleCount: z
                     .number()
-                    .optional()
-                    .default(100)
                     .describe(
                         "Number of bubbles to create (default: 100, max: 500)"
-                    )
-                    .refine((val) => val >= 1 && val <= 500, {
-                        message: "Bubble count must be between 1 and 500",
-                    }),
+                    ),
             },
             // Apps SDK metadata
             _meta: {
@@ -260,6 +255,10 @@ export function initMcpServer(): McpServer {
             },
         },
         async ({ bubbleCount = 100 }: { bubbleCount?: number }) => {
+            // Validate bubble count
+            if (bubbleCount < 1 || bubbleCount > 500) {
+                throw new Error("Bubble count must be between 1 and 500");
+            }
             // Validate and clamp bubble count
             const validBubbleCount = Math.min(
                 Math.max(Math.floor(bubbleCount), 1),

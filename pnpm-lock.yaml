@@ -29,6 +29,9 @@ importers:
       strip-ansi:
         specifier: ^7.1.2
         version: 7.1.2
+      zod:
+        specifier: '3'
+        version: 3.25.76
     devDependencies:
       '@types/cors':
         specifier: ^2.8.17
