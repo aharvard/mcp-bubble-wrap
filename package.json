@@ -1,37 +1,61 @@
 {
-    "name": "typescript-server-demo",
-    "version": "1.0.0",
-    "type": "module",
-    "description": "Barebones TypeScript Model Context Protocol server demo.",
-    "main": "dist/index.js",
-    "scripts": {
-        "build": "tsc",
-        "start": "node dist/index.js",
-        "dev": "concurrently \"vite-node src/index.ts\" \"pnpm inspect:dev\"",
-        "inspect:dev": "npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server local-server",
-        "inspect:prod": "npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server production-server"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "dependencies": {
-        "@mcp-ui/server": "^5.2.0",
-        "@modelcontextprotocol/sdk": "^1.18.2",
-        "chalk": "^5.6.2",
-        "cors": "^2.8.5",
-        "express": "^5.0.1",
-        "string-width": "^8.1.0",
-        "strip-ansi": "^7.1.2",
-        "zod": "3"
-    },
-    "devDependencies": {
-        "@types/cors": "^2.8.17",
-        "@types/express": "^5.0.0",
-        "@types/node": "^22.13.10",
-        "concurrently": "^9.1.2",
-        "ts-node": "^10.9.2",
-        "typescript": "^5.8.2",
-        "vite": "^6.2.2",
-        "vite-node": "^1.0.7"
-    }
+  "name": "typescript-server-demo",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Barebones TypeScript Model Context Protocol server demo.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "pnpm run build:server && pnpm run build:widgets",
+    "build:server": "tsc",
+    "build:widgets": "tsx ./scripts/build-widgets.mts",
+    "start": "node dist/index.js",
+    "dev": "concurrently \"npm run dev:widgets\" \"vite-node src/index.ts\" \"pnpm inspect:dev\"",
+    "dev:widgets": "vite --config vite.config.mts",
+    "serve:widgets": "serve -s ./assets -p 4444 --cors",
+    "inspect:dev": "pnpx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server local-server",
+    "inspect:prod": "pnpx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server production-server",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"scripts/**/*.{ts,mts,js}\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"scripts/**/*.{ts,mts,js}\" \"*.{json,md}\"",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,css,md,mts}": [
+      "prettier --write"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@mcp-ui/server": "^5.2.0",
+    "@modelcontextprotocol/sdk": "^1.18.2",
+    "chalk": "^5.6.2",
+    "cors": "^2.8.5",
+    "express": "^5.0.1",
+    "framer-motion": "^12.23.12",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "string-width": "^8.1.0",
+    "strip-ansi": "^7.1.2",
+    "zod": "3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^4.5.2",
+    "concurrently": "^9.1.2",
+    "fast-glob": "^3.3.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.6",
+    "prettier": "^3.6.2",
+    "serve": "^14.2.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.4",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.2",
+    "vite-node": "^1.0.7"
+  }
 }
