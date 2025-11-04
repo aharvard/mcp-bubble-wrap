@@ -27,9 +27,9 @@ function loadWidgetHtml(): string {
   }
 
   try {
-    // In production, read from the dist/assets directory
+    // In production, read from the assets directory
     // The build script generates bubble-wrap-<hash>.html, so we need to find it dynamically
-    const assetsDir = join(__dirname, "..", "..", "assets")
+    const assetsDir = join(__dirname, "..", "assets")
     const files = readdirSync(assetsDir)
     const htmlFile = files.find(
       (f) => f.startsWith("bubble-wrap-") && f.endsWith(".html")
@@ -37,6 +37,8 @@ function loadWidgetHtml(): string {
 
     if (!htmlFile) {
       throw new Error("No bubble-wrap HTML file found in assets directory")
+    } else {
+      console.log("Found bubble-wrap HTML file:", htmlFile)
     }
 
     const assetsPath = join(assetsDir, htmlFile)
