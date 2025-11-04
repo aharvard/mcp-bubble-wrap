@@ -22,6 +22,9 @@ const PER_ENTRY_CSS_IGNORE = ["**/*.module.*"]
 
 const builtNames: string[] = []
 
+// How many previous builds to keep (for cache overlap)
+const KEEP_RECENT_BUILDS = 3
+
 function wrapEntryPlugin(
   virtualId: string,
   entryFile: string,
@@ -54,9 +57,8 @@ function wrapEntryPlugin(
   }
 }
 
-// Clean output directory
+// Prepare output directory (don't wipe - we'll keep recent builds)
 const outPath = path.join(rootDir, outDir)
-fs.rmSync(outPath, { recursive: true, force: true })
 fs.mkdirSync(outPath, { recursive: true })
 
 for (const file of entries) {
@@ -128,9 +130,19 @@ for (const file of entries) {
   console.log(`Built ${name}`)
 }
 
+// Only hash the freshly built files (without existing hash in name)
 const outputs = fs
   .readdirSync(outPath)
-  .filter((f) => f.endsWith(".js") || f.endsWith(".css"))
+  .filter((f) => {
+    // Only include .js and .css files
+    if (!f.endsWith(".js") && !f.endsWith(".css")) return false
+
+    // Exclude files that already have a hash pattern (widget-12345678.js)
+    if (f.match(/-[a-f0-9]{8}\.(js|css)$/)) return false
+
+    // Include unhashed files from this build
+    return builtNames.some((name) => f === `${name}.js` || f === `${name}.css`)
+  })
   .map((f) => path.join(outPath, f))
   .filter((p) => fs.existsSync(p))
 
@@ -163,11 +175,11 @@ const baseUrlRaw =
 const normalizedBaseUrl = baseUrlRaw.replace(/\/+$/, "") || defaultBaseUrl
 console.log(`Using BASE_URL ${normalizedBaseUrl} for generated HTML`)
 
-// Generate HTML files for each widget
+// Generate HTML files for each widget (unhashed filenames!)
 for (const name of builtNames) {
-  const hashedHtmlPath = path.join(outPath, `${name}-${h}.html`)
+  const unhashedHtmlPath = path.join(outPath, `${name}.html`)
   const html = `<!doctype html>
-<!-- ${name}-${h} | ${new Date().toISOString()} -->
+<!-- Built: ${new Date().toISOString()} -->
 <html>
 <head>
   <meta charset="UTF-8">
@@ -180,8 +192,55 @@ for (const name of builtNames) {
 </body>
 </html>
 `
-  fs.writeFileSync(hashedHtmlPath, html, { encoding: "utf8" })
-  console.log(`Generated: ${hashedHtmlPath}`)
+  fs.writeFileSync(unhashedHtmlPath, html, { encoding: "utf8" })
+  console.log(`Generated: ${unhashedHtmlPath}`)
 }
+
+// Cleanup: Keep only the last N builds of hashed JS/CSS files
+console.group("Cleaning up old builds")
+for (const name of builtNames) {
+  const jsPattern = new RegExp(`^${name}-(\\w{8})\\.js$`)
+  const cssPattern = new RegExp(`^${name}-(\\w{8})\\.css$`)
+
+  const allFiles = fs.readdirSync(outPath)
+
+  // Group by extension
+  const jsFiles = allFiles
+    .filter((f) => jsPattern.test(f))
+    .map((f) => ({
+      name: f,
+      path: path.join(outPath, f),
+      stat: fs.statSync(path.join(outPath, f)),
+    }))
+    .sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs) // newest first
+
+  const cssFiles = allFiles
+    .filter((f) => cssPattern.test(f))
+    .map((f) => ({
+      name: f,
+      path: path.join(outPath, f),
+      stat: fs.statSync(path.join(outPath, f)),
+    }))
+    .sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs) // newest first
+
+  // Delete old JS files (keep last N)
+  if (jsFiles.length > KEEP_RECENT_BUILDS) {
+    const toDelete = jsFiles.slice(KEEP_RECENT_BUILDS)
+    for (const file of toDelete) {
+      fs.unlinkSync(file.path)
+      console.log(`Deleted old: ${file.name}`)
+    }
+  }
+
+  // Delete old CSS files (keep last N)
+  if (cssFiles.length > KEEP_RECENT_BUILDS) {
+    const toDelete = cssFiles.slice(KEEP_RECENT_BUILDS)
+    for (const file of toDelete) {
+      fs.unlinkSync(file.path)
+      console.log(`Deleted old: ${file.name}`)
+    }
+  }
+}
+console.groupEnd()
 
 console.log("\n✅ Widget build complete!")
