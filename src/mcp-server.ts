@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { createUIResource } from "@mcp-ui/server"
 import { z } from "zod"
-import { readFileSync, readdirSync } from "fs"
+import { readFileSync } from "fs"
 import { fileURLToPath } from "url"
 import { dirname, join } from "path"
 import {
@@ -19,35 +19,27 @@ const BUBBLE_WRAP_TEMPLATE_URI = "ui://widgets/bubble-wrap"
 // Determine base URL for assets (use environment variable or default to localhost)
 const BASE_URL = process.env.BASE_URL || "http://localhost:4444"
 
-// Version hash for cache busting (read from generated HTML)
-let widgetHtmlCache: string | null = null
+// Widget HTML (loaded once on first use)
+let widgetHtml: string | null = null
 
 /**
  * Load the built widget HTML from the assets directory
  */
 function loadWidgetHtml(): string {
-  if (widgetHtmlCache) {
-    return widgetHtmlCache
+  if (widgetHtml) {
+    return widgetHtml
   }
 
   try {
-    // In production, read from the assets directory
-    // The build script generates bubble-wrap-<hash>.html, so we need to find it dynamically
+    // Read the unhashed HTML file from assets directory
+    // The build script generates bubble-wrap.html (unhashed for quick cache updates)
     const assetsDir = join(__dirname, "..", "assets")
-    const files = readdirSync(assetsDir)
-    const htmlFile = files.find(
-      (f) => f.startsWith("bubble-wrap-") && f.endsWith(".html")
-    )
-
-    if (!htmlFile) {
-      throw new Error("No bubble-wrap HTML file found in assets directory")
-    } else {
-      console.log("Found bubble-wrap HTML file:", htmlFile)
-    }
-
+    const htmlFile = "bubble-wrap.html"
     const assetsPath = join(assetsDir, htmlFile)
-    widgetHtmlCache = readFileSync(assetsPath, "utf-8")
-    return widgetHtmlCache
+
+    widgetHtml = readFileSync(assetsPath, "utf-8")
+    console.log("Loaded bubble-wrap HTML from:", htmlFile)
+    return widgetHtml
   } catch (error) {
     // Fallback: if assets aren't built yet, return a dev-mode HTML
     console.warn(
@@ -96,7 +88,7 @@ export function initMcpServer(): McpServer {
         connect_domains: [BASE_URL],
         resource_domains: [BASE_URL],
       },
-      "dev/widgetHtmlCache": widgetHtmlCache,
+      "dev/widgetHtml": widgetHtml,
     },
   })
 
