@@ -42,11 +42,9 @@ function loadWidgetHtml(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script type="module" src="${BASE_URL}/bubble-wrap.js"></script>
-  <link rel="stylesheet" href="${BASE_URL}/bubble-wrap.css">
 </head>
 <body>
-  <div id="bubble-wrap-root"></div>
+  <p>Widget assets not found, using dev mode HTML. Run 'npm run build:widgets' first.</p>
 </body>
 </html>`
   }

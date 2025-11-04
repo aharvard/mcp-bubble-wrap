@@ -102,6 +102,7 @@ for (const file of entries) {
       emptyOutDir: false,
       chunkSizeWarningLimit: 2000,
       minify: "esbuild",
+      sourcemap: false,
       cssCodeSplit: false,
       rollupOptions: {
         input: virtualId,
@@ -165,7 +166,6 @@ console.log(`Using BASE_URL ${normalizedBaseUrl} for generated HTML`)
 // Generate HTML files for each widget
 for (const name of builtNames) {
   const hashedHtmlPath = path.join(outPath, `${name}-${h}.html`)
-  const liveHtmlPath = path.join(outPath, `${name}.html`)
   const html = `<!doctype html>
 <html>
 <head>
@@ -180,8 +180,7 @@ for (const name of builtNames) {
 </html>
 `
   fs.writeFileSync(hashedHtmlPath, html, { encoding: "utf8" })
-  fs.writeFileSync(liveHtmlPath, html, { encoding: "utf8" })
-  console.log(`Generated: ${liveHtmlPath}`)
+  console.log(`Generated: ${hashedHtmlPath}`)
 }
 
 console.log("\n✅ Widget build complete!")
