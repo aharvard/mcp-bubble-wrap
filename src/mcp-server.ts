@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { createUIResource } from "@mcp-ui/server"
 import { z } from "zod"
-import { readFileSync } from "fs"
+import { readFileSync, readdirSync } from "fs"
 import { fileURLToPath } from "url"
 import { dirname, join } from "path"
 
@@ -28,8 +28,18 @@ function loadWidgetHtml(): string {
 
   try {
     // In production, read from the dist/assets directory
-    // The build script generates bubble-wrap.html with the proper hash
-    const assetsPath = join(__dirname, "..", "..", "assets", "bubble-wrap.html")
+    // The build script generates bubble-wrap-<hash>.html, so we need to find it dynamically
+    const assetsDir = join(__dirname, "..", "..", "assets")
+    const files = readdirSync(assetsDir)
+    const htmlFile = files.find(
+      (f) => f.startsWith("bubble-wrap-") && f.endsWith(".html")
+    )
+
+    if (!htmlFile) {
+      throw new Error("No bubble-wrap HTML file found in assets directory")
+    }
+
+    const assetsPath = join(assetsDir, htmlFile)
     widgetHtmlCache = readFileSync(assetsPath, "utf-8")
     return widgetHtmlCache
   } catch (error) {
