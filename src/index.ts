@@ -13,6 +13,7 @@ import {
   logSessionClosed,
   logSessionRequestFailed,
   logServerStarted,
+  logStaticAssets,
 } from "./utils/logger.js"
 import { initMcpServer } from "./mcp-server.js"
 
@@ -34,7 +35,7 @@ app.use(express.json())
 // Serve static assets from the assets directory
 const assetsPath = path.join(__dirname, "..", "assets")
 app.use(express.static(assetsPath))
-console.log(chalk.blue(`📁 Serving static assets from: ${assetsPath}`))
+logStaticAssets(assetsPath)
 
 // Map to store transports by session ID, as shown in the documentation.
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {}

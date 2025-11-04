@@ -29,14 +29,27 @@ export function BubbleWrap() {
       | null
       | undefined
 
+    // @ts-ignore
+    if (window.openai) {
+      // @ts-ignore
+      console.log("OpenAI global:", window.openai)
+    } else {
+      console.log("No OpenAI global found")
+    }
+
     if (toolOutput) {
       console.log("Received toolOutput data:", toolOutput)
 
       // You can access specific properties from toolOutput here
       // For example, if toolOutput has bubbleCount:
-      // if (toolOutput.bubbleCount) {
-      //     console.log("Custom bubble count from toolOutput:", toolOutput.bubbleCount);
-      // }
+      if (toolOutput.bubbleCount) {
+        console.log(
+          "Custom bubble count from toolOutput:",
+          toolOutput.bubbleCount
+        )
+      } else {
+        console.log("No bubble count from toolOutput")
+      }
     } else {
       console.log("No toolOutput data available")
     }

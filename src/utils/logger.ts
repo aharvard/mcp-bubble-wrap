@@ -1,6 +1,7 @@
 import chalk from "chalk"
 import stringWidth from "string-width"
 import stripAnsi from "strip-ansi"
+import { readdirSync } from "fs"
 
 /**
  * Truncates a long line to fit within the specified width
@@ -256,4 +257,24 @@ export const logServerStarted = (port: string | number) => {
     chalk.green
   )
   console.log("\n")
+}
+
+/**
+ * Logs static assets directory and its contents
+ */
+export const logStaticAssets = (assetsPath: string) => {
+  console.log(chalk.white(`\n  ➜  Serving static assets:`))
+
+  try {
+    const files = readdirSync(assetsPath)
+    if (files.length > 0) {
+      files.forEach((file) => {
+        console.log(chalk.magenta(`     • ${file}`))
+      })
+    } else {
+      console.log(chalk.yellow("   (empty directory)"))
+    }
+  } catch (error) {
+    console.log(chalk.yellow("   (unable to read directory)"))
+  }
 }
