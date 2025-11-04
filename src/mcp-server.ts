@@ -4,6 +4,10 @@ import { z } from "zod"
 import { readFileSync, readdirSync } from "fs"
 import { fileURLToPath } from "url"
 import { dirname, join } from "path"
+import {
+  bubbleWrapOutputSchema,
+  type BubbleWrapStructuredContent,
+} from "./widgets/bubble-wrap/types.js"
 
 // Get the directory of the current module
 const __filename = fileURLToPath(import.meta.url)
@@ -92,6 +96,7 @@ export function initMcpServer(): McpServer {
         connect_domains: [BASE_URL],
         resource_domains: [BASE_URL],
       },
+      "dev/widgetHtmlCache": widgetHtmlCache,
     },
   })
 
@@ -121,7 +126,7 @@ export function initMcpServer(): McpServer {
           .number()
           .describe("Number of bubbles to create (default: 100, max: 500)"),
       },
-      // Apps SDK metadata
+      outputSchema: bubbleWrapOutputSchema.shape,
       _meta: {
         "openai/outputTemplate": BUBBLE_WRAP_TEMPLATE_URI,
         "openai/toolInvocation/invoking": "Creating bubble wrap...",
@@ -152,6 +157,10 @@ export function initMcpServer(): McpServer {
       })
 
       // Return both text content and the UI resource
+      const structuredContent: BubbleWrapStructuredContent = {
+        bubbleCount: validBubbleCount,
+      }
+
       return {
         content: [
           {
@@ -160,10 +169,8 @@ export function initMcpServer(): McpServer {
           },
           uiResource,
         ],
-        // Structured content for Apps SDK
-        structuredContent: {
-          bubbleCount: validBubbleCount,
-        },
+        // Structured content for Apps SDK - type-safe!
+        structuredContent,
       }
     }
   )

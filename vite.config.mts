@@ -157,10 +157,7 @@ function multiEntryDevEndpoints(options: {
 
       if (kind === "style") {
         const allCss = perEntry // absolute paths on disk
-        const lines = [
-          `@source "./src";`,
-          ...allCss.map((p) => `@import "${toServerRoot(p)}";`),
-        ]
+        const lines = [...allCss.map((p) => `@import "${toServerRoot(p)}";`)]
         return lines.join("\n")
       }
 

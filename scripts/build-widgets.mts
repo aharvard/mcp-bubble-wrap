@@ -134,10 +134,10 @@ const outputs = fs
   .map((f) => path.join(outPath, f))
   .filter((p) => fs.existsSync(p))
 
-// Create hash from version
+// Create hash from build timestamp for cache busting
 const h = crypto
   .createHash("sha256")
-  .update(pkg.version, "utf8")
+  .update(Date.now().toString(), "utf8")
   .digest("hex")
   .slice(0, 8)
 
@@ -167,6 +167,7 @@ console.log(`Using BASE_URL ${normalizedBaseUrl} for generated HTML`)
 for (const name of builtNames) {
   const hashedHtmlPath = path.join(outPath, `${name}-${h}.html`)
   const html = `<!doctype html>
+<!-- ${name}-${h} | ${new Date().toISOString()} -->
 <html>
 <head>
   <meta charset="UTF-8">

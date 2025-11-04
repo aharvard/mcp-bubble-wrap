@@ -1,15 +1,37 @@
-/**
- * Hook to access OpenAI global data injected by the Apps SDK
- */
-export function useOpenAiGlobal<T = unknown>(key: string): T | null {
-  if (typeof window === "undefined") return null
+import { useSyncExternalStore } from "react"
+import {
+  SET_GLOBALS_EVENT_TYPE,
+  SetGlobalsEvent,
+  type OpenAiGlobals,
+} from "./types"
 
-  const w = window as any
+export function useOpenAiGlobal<K extends keyof OpenAiGlobals>(
+  key: K
+): OpenAiGlobals[K] | null {
+  return useSyncExternalStore(
+    (onChange) => {
+      if (typeof window === "undefined") {
+        return () => {}
+      }
 
-  // Check for OpenAI global object
-  if (w.openai && typeof w.openai === "object") {
-    return (w.openai[key] as T) ?? null
-  }
+      const handleSetGlobal = (event: SetGlobalsEvent) => {
+        const value = event.detail.globals[key]
+        if (value === undefined) {
+          return
+        }
 
-  return null
+        onChange()
+      }
+
+      window.addEventListener(SET_GLOBALS_EVENT_TYPE, handleSetGlobal, {
+        passive: true,
+      })
+
+      return () => {
+        window.removeEventListener(SET_GLOBALS_EVENT_TYPE, handleSetGlobal)
+      }
+    },
+    () => window.openai?.[key] ?? null,
+    () => window.openai?.[key] ?? null
+  )
 }
