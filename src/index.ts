@@ -14,7 +14,7 @@ import {
   logSessionRequestFailed,
   logServerStarted,
 } from "./utils/logger.js"
-import { initMcpServer } from "./mcp/server.js"
+import { initMcpServer } from "./mcp-server.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

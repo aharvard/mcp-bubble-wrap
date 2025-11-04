@@ -77,7 +77,7 @@ export function initMcpServer(): McpServer {
         "An interactive bubble wrap simulator where you can pop virtual bubbles for stress relief",
       "openai/widgetPrefersBorder": true,
       "openai/widgetCSP": {
-        connect_domains: [],
+        connect_domains: [BASE_URL],
         resource_domains: [BASE_URL],
       },
     },

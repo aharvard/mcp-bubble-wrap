@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useWidgetProps } from "../../hooks/use-widget-props.js"
+import { useWidgetProps } from "../hooks/use-widget-props.js"
 
 interface BubbleWrapProps extends Record<string, unknown> {
   bubbleCount?: number
