@@ -9,10 +9,6 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const rootDir = path.resolve(__dirname, "..")
 
-// Read package.json for version
-const pkgPath = path.join(rootDir, "package.json")
-const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"))
-
 const entries = fg.sync("src/widgets/**/index.{tsx,jsx}", { cwd: rootDir })
 const outDir = "assets"
 
