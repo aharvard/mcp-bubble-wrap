@@ -10,6 +10,13 @@ export function BubbleWrap() {
 
   const bubbleCount = toolOutput?.bubbleCount
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log("[BubbleWrap] Component rendered")
+    console.log("[BubbleWrap] toolOutput:", toolOutput)
+    console.log("[BubbleWrap] bubbleCount:", bubbleCount)
+  }, [toolOutput, bubbleCount])
+
   return (
     <Layout className="p-6">
       {bubbleCount ? (
