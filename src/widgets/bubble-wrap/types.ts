@@ -7,7 +7,7 @@ import { z } from "zod"
  * Extends Record<string, unknown> to satisfy MCP SDK requirements
  */
 export interface BubbleWrapStructuredContent extends Record<string, unknown> {
-  bubbleCount: number
+  bubbleCount?: number
 }
 
 /**

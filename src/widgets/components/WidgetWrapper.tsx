@@ -104,9 +104,9 @@ export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
 
     return classes.filter(Boolean).join(" ")
   }, [displayMode, backgroundColor, className])
+
   return (
     <div className={themeClass} data-theme={theme || "light"}>
-      <h1>WidgetWrapper</h1>
       <div className={contentClasses} style={style}>
         {children}
       </div>

@@ -14,6 +14,8 @@ export function useOpenAiGlobal<K extends keyof OpenAiGlobals>(
         return () => {}
       }
 
+      console.log("[useOpenAiGlobal] window.openai", window.openai)
+
       const handleSetGlobal = (event: SetGlobalsEvent) => {
         const value = event.detail.globals[key]
         if (value === undefined) {
