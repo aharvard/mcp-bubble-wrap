@@ -7,7 +7,7 @@
   "scripts": {
     "build": "pnpm run build:server && pnpm run build:widgets",
     "build:server": "tsc",
-    "build:widgets": "tsx ./scripts/build-widgets.mts",
+    "build:widgets": "tsx ./build-widgets.mts",
     "start": "node dist/index.js",
     "dev": "concurrently \"npm run build:widgets\" \"vite-node src/index.ts\" \"pnpm inspect:dev\"",
     "serve:widgets": "serve -s ./assets -p 4444 --cors",
