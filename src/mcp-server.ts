@@ -42,8 +42,9 @@ function loadWidgetHtml(): string {
     return widgetHtml
   } catch (error) {
     // Fallback: if assets aren't built yet, return a dev-mode HTML
-    console.warn(
-      "Widget assets not found, using dev mode HTML. Run 'npm run build:widgets' first."
+    console.error(
+      "Widget assets not found, using dev mode HTML. Run 'npm run build:widgets' first.",
+      error
     )
     return `<!doctype html>
 <html>

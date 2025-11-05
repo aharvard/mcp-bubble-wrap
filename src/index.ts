@@ -32,30 +32,6 @@ app.use(
 )
 app.use(express.json())
 
-// Serve static assets from the assets directory with proper cache headers
-const assetsPath = path.join(__dirname, "..", "assets")
-app.use(
-  express.static(assetsPath, {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith(".html")) {
-        // HTML files: short cache (5 minutes) to allow quick updates
-        // while still reducing edge revalidation
-        res.setHeader(
-          "Cache-Control",
-          "public, max-age=300, must-revalidate, stale-while-revalidate=60"
-        )
-      } else if (filePath.match(/\-[a-f0-9]{8}\.(js|css)$/)) {
-        // Content-hashed JS/CSS: immutable, cache forever
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable")
-      } else {
-        // Other files: moderate cache
-        res.setHeader("Cache-Control", "public, max-age=3600")
-      }
-    },
-  })
-)
-logStaticAssets(assetsPath)
-
 // Map to store transports by session ID, as shown in the documentation.
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {}
 
