@@ -85,6 +85,9 @@ export function initMcpServer(): McpServer {
       "openai/widgetDescription":
         "An interactive bubble wrap simulator where you can pop virtual bubbles for stress relief",
       "openai/widgetPrefersBorder": true,
+      // we don't technically need to set domains to BASE_URL since we are inlining JS and CSS in the HTML
+      // however, I'm leaving this in as an example of how to set CSP domains
+      // we likely need to provide domains for fonts at some point
       "openai/widgetCSP": {
         connect_domains: [BASE_URL],
         resource_domains: [BASE_URL],

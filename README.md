@@ -7,6 +7,7 @@ A sophisticated MCP (Model Context Protocol) server with React-based interactive
 - 🫧 **Interactive Bubble Wrap Widget**: Pop virtual bubbles with smooth animations using Framer Motion
 - ⚡ **Modern Build System**: Vite-powered development and production builds
 - 🎨 **React-based Widgets**: Easy to create and maintain UI components
+- 🎨 **Tailwind CSS**: Utility-first CSS framework with dark mode support
 - 🔄 **Hot Module Replacement**: Fast development with instant updates
 - 📦 **Optimized Builds**: Hashed assets with cache busting
 - 🌐 **Apps SDK Compatible**: Works seamlessly with ChatGPT and OpenAI Apps SDK
@@ -17,9 +18,12 @@ A sophisticated MCP (Model Context Protocol) server with React-based interactive
 mcp-bubble-wrap/
 ├── src/
 │   ├── widgets/                # React-based widgets
+│   │   ├── styles.css          # Shared Tailwind styles
+│   │   ├── components/         # Shared widget components
+│   │   │   └── WidgetWrapper.tsx
+│   │   ├── hooks/              # Shared hooks
 │   │   └── bubble-wrap/
 │   │       ├── BubbleWrap.tsx  # Widget component
-│   │       ├── styles.css      # Widget styles
 │   │       └── index.tsx       # Widget entry point
 │   ├── lib/                    # Shared utilities
 │   │   ├── use-widget-props.ts # Hook for widget props from Apps SDK
@@ -31,6 +35,8 @@ mcp-bubble-wrap/
 │   └── build-widgets.mts       # Widget build orchestrator
 ├── assets/                     # Built widget assets (generated)
 ├── vite.config.mts             # Vite configuration for dev/build
+├── tailwind.config.mjs         # Tailwind CSS configuration
+├── postcss.config.mjs          # PostCSS configuration
 └── package.json
 ```
 
@@ -110,8 +116,7 @@ pnpm start
 ```
 src/widgets/my-widget/
 ├── MyWidget.tsx    # React component
-├── styles.css      # Styles
-└── index.tsx       # Entry point
+└── index.tsx       # Entry point (imports shared styles.css)
 ```
 
 2. Entry point template (`index.tsx`):
@@ -119,7 +124,7 @@ src/widgets/my-widget/
 ```tsx
 import { createRoot } from "react-dom/client"
 import MyWidget from "./MyWidget"
-import "./styles.css"
+import "../styles.css" // Import shared Tailwind styles
 
 const rootEl = document.getElementById("my-widget-root")
 if (rootEl) {
@@ -134,6 +139,7 @@ export default MyWidget
 
 ```tsx
 import { useWidgetProps } from "../../lib/use-widget-props.js"
+import { WidgetWrapper } from "../components/WidgetWrapper.js"
 
 interface MyWidgetProps {
   // Your props from the MCP tool
@@ -142,7 +148,15 @@ interface MyWidgetProps {
 export function MyWidget() {
   const props = useWidgetProps<MyWidgetProps>({})
 
-  return <div className="my-widget">{/* Your UI here */}</div>
+  return (
+    <WidgetWrapper className="p-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+          {/* Your UI here */}
+        </h1>
+      </div>
+    </WidgetWrapper>
+  )
 }
 
 export default MyWidget
@@ -156,6 +170,22 @@ pnpm dev
 ```
 
 The widget will automatically be discovered and built!
+
+### Styling with Tailwind CSS
+
+All widgets have access to Tailwind CSS utility classes. The `WidgetWrapper` component automatically handles:
+
+- **Dark mode**: Use `dark:` prefix for dark mode styles (e.g., `dark:text-white`)
+- **Theme detection**: Automatically detects and applies ChatGPT's theme
+- **Layout constraints**: Optional max-height and safe area support
+
+Example styling:
+
+```tsx
+<div className="flex items-center justify-center min-h-[200px]">
+  <p className="text-gray-500 dark:text-gray-400 animate-pulse">Loading...</p>
+</div>
+```
 
 ## Widget Gallery
 
@@ -247,6 +277,9 @@ BASE_URL=https://your-cdn.com npm run build
 - `@vitejs/plugin-react`: React support for Vite
 - `tsx`: TypeScript execution
 - `fast-glob`: File discovery for build system
+- `tailwindcss`: Utility-first CSS framework
+- `postcss`: CSS transformation tool
+- `autoprefixer`: Automatic vendor prefix handling
 
 ## Inspiration
 

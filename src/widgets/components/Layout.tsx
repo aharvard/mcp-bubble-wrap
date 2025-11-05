@@ -1,7 +1,8 @@
 import React, { useMemo } from "react"
 import { useOpenAiGlobal } from "../hooks/use-openai-global"
+import "../styles.css"
 
-interface WidgetWrapperProps {
+interface LayoutProps {
   children: React.ReactNode
   className?: string
   /**
@@ -26,12 +27,12 @@ interface WidgetWrapperProps {
 }
 
 /**
- * WidgetWrapper - A top-level wrapper component for widgets that:
+ * Layout - A top-level wrapper component for widgets that:
  * - Applies theme (light/dark mode) via Tailwind classes
  * - Handles layout constraints (max-height, safe areas)
  * - Provides consistent visual styling across widgets
  */
-export const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
+export const Layout: React.FC<LayoutProps> = ({
   children,
   className = "",
   applyMaxHeight = false,
