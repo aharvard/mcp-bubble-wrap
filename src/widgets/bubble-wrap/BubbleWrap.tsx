@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect } from "react"
 import { Layout } from "../components/Layout.js"
 import { useOpenAiGlobal } from "../hooks/use-openai-global.js"
 import type { BubbleWrapStructuredContent } from "./types.js"
@@ -14,7 +14,7 @@ export function BubbleWrap() {
   )
 
   // Debug logging
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("[BubbleWrap] Component rendered")
     console.log("[BubbleWrap] toolOutput:", toolOutput)
     console.log("[BubbleWrap] bubbleCount:", bubbleCount)
@@ -32,6 +32,20 @@ export function BubbleWrap() {
       return newSet
     })
   }
+
+  useEffect(() => {
+    window.parent.postMessage(
+      {
+        type: "ui-request-data",
+        messageId: `get-bubble-count-${Date.now()}`,
+        payload: {
+          requestType: "get-bubble-count",
+          params: {},
+        },
+      },
+      "*"
+    )
+  }, [bubbleCount])
 
   return (
     <Layout className="p-6">
