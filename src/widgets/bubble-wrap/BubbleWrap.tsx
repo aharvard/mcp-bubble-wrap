@@ -111,33 +111,25 @@ export function BubbleWrap() {
           <div className="sticky top-0 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Total Bubbles
-                </p>
-                <p className="text-3xl font-bold text-black dark:text-white">
-                  {bubbleCount}
-                </p>
+                <p className="text-sm text-gray-600">Total Bubbles</p>
+                <p className="text-3xl font-bold text-black">{bubbleCount}</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Popped
-                </p>
-                <p className="text-3xl font-bold text-black dark:text-white">
+                <p className="text-sm text-gray-600">Popped</p>
+                <p className="text-3xl font-bold text-black">
                   {poppedBubbles.size}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Remaining
-                </p>
-                <p className="text-3xl font-bold text-black dark:text-white">
+                <p className="text-sm text-gray-600">Remaining</p>
+                <p className="text-3xl font-bold text-black">
                   {bubbleCount - poppedBubbles.size}
                 </p>
               </div>
             </div>
             {poppedBubbles.size === bubbleCount && (
               <div className="mt-3 p-2  text-center">
-                <p className="text-sm font-semibold text-black dark:text-white">
+                <p className="text-sm font-semibold text-black">
                   All bubbles popped! Great job!
                 </p>
               </div>
@@ -145,7 +137,7 @@ export function BubbleWrap() {
           </div>
 
           {/* Bubble wrap grid */}
-          <div className="relative p-4 pr-[calc(1rem+8.33%)] sm:pr-[calc(1rem+6.25%)] md:pr-[calc(1rem+5%)] lg:pr-[calc(1rem+4.17%)] bg-[#e0e0e0] dark:bg-gray-900/50">
+          <div className="relative p-4 pr-[calc(1rem+8.33%)] sm:pr-[calc(1rem+6.25%)] md:pr-[calc(1rem+5%)] lg:pr-[calc(1rem+4.17%)] bg-[#e0e0e0]">
             <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
               {Array.from({ length: bubbleCount }).map((_, index) => {
                 const isPopped = poppedBubbles.has(index)
@@ -222,7 +214,7 @@ export function BubbleWrap() {
         </div>
       ) : (
         <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-gray-500 dark:text-gray-400 animate-pulse">
+          <p className="text-gray-500 animate-pulse">
             Waiting for bubble count...
           </p>
         </div>
