@@ -125,8 +125,8 @@ export function initMcpServer(): McpServer {
       outputSchema: bubbleWrapOutputSchema.shape,
       _meta: {
         "openai/outputTemplate": BUBBLE_WRAP_TEMPLATE_URI,
-        "openai/toolInvocation/invoking": "Creating bubble wrap...",
-        "openai/toolInvocation/invoked": "Bubble wrap ready to pop!",
+        "openai/toolInvocation/invoking": "Unrolling bubble wrap...",
+        "openai/toolInvocation/invoked": "Bubble wrap unrolled, get popping!",
         "openai/widgetAccessible": true,
       },
     },
