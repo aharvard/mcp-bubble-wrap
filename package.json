@@ -24,7 +24,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@mcp-ui/server": "^5.2.0",
     "@modelcontextprotocol/sdk": "^1.18.2",

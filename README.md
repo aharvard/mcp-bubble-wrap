@@ -4,12 +4,12 @@ A sophisticated MCP (Model Context Protocol) server with React-based interactive
 
 ## Features
 
-- 🫧 **Interactive Bubble Wrap Widget**: Pop virtual bubbles with smooth animations using Framer Motion
+- 🫧 **Interactive Bubble Wrap Widget**: Pop virtual bubbles with smooth CSS animations
 - ⚡ **Modern Build System**: Vite-powered development and production builds
 - 🎨 **React-based Widgets**: Easy to create and maintain UI components
-- 🎨 **Tailwind CSS**: Utility-first CSS framework with dark mode support
+- 🎨 **Tailwind CSS**: Utility-first CSS framework with theme support
 - 🔄 **Hot Module Replacement**: Fast development with instant updates
-- 📦 **Optimized Builds**: Hashed assets with cache busting
+- 📦 **Optimized Builds**: Inlined assets for easy deployment
 - 🌐 **Apps SDK Compatible**: Works seamlessly with ChatGPT and OpenAI Apps SDK
 
 ## Project Structure
@@ -20,20 +20,21 @@ mcp-bubble-wrap/
 │   ├── widgets/                # React-based widgets
 │   │   ├── styles.css          # Shared Tailwind styles
 │   │   ├── components/         # Shared widget components
-│   │   │   └── WidgetWrapper.tsx
+│   │   │   └── Layout.tsx
 │   │   ├── hooks/              # Shared hooks
+│   │   │   ├── types.ts
+│   │   │   └── use-openai-global.ts
 │   │   └── bubble-wrap/
 │   │       ├── BubbleWrap.tsx  # Widget component
-│   │       └── index.tsx       # Widget entry point
-│   ├── lib/                    # Shared utilities
-│   │   ├── use-widget-props.ts # Hook for widget props from Apps SDK
-│   │   └── use-openai-global.ts # Hook for OpenAI global data
-│   ├── mcp/
-│   │   └── server.ts           # MCP server implementation
+│   │       ├── index.tsx       # Widget entry point
+│   │       └── types.ts        # Widget types
+│   ├── utils/                  # Shared utilities
+│   │   └── logger.ts
+│   ├── mcp-server.ts           # MCP server implementation
 │   └── index.ts                # Server entry point
-├── scripts/
-│   └── build-widgets.mts       # Widget build orchestrator
+├── build-widgets.mts           # Widget build orchestrator
 ├── assets/                     # Built widget assets (generated)
+├── dist/                       # Compiled server code (generated)
 ├── vite.config.mts             # Vite configuration for dev/build
 ├── tailwind.config.mjs         # Tailwind CSS configuration
 ├── postcss.config.mjs          # PostCSS configuration
@@ -59,7 +60,7 @@ pnpm dev
 This starts:
 
 1. **Widget Dev Server** (port 4444) - Vite dev server with HMR
-2. **MCP Server** - TypeScript server with vite-node
+2. **MCP Server** (port 5678) - TypeScript server with vite-node
 3. **MCP Inspector** - Interactive testing UI
 
 ### Individual Commands
@@ -94,13 +95,16 @@ This will:
 
 ### Environment Variables
 
-- `BASE_URL` - Base URL for widget assets (default: `http://localhost:4444`)
-  - For production, set this to your deployed assets URL
+- `BASE_URL` - Base URL for widget assets in HTML generation (default: `http://localhost:5678`)
+  - Note: Not currently used as assets are inlined in HTML
+  - For production, set this to your deployed assets URL if serving external resources
+- `PORT` - MCP server port (default: `5678`)
 
 Example:
 
 ```bash
-BASE_URL=https://your-cdn.com npm run build:widgets
+BASE_URL=https://your-cdn.com pnpm run build:widgets
+PORT=3000 pnpm start
 ```
 
 ## Production
@@ -124,7 +128,6 @@ src/widgets/my-widget/
 ```tsx
 import { createRoot } from "react-dom/client"
 import MyWidget from "./MyWidget"
-import "../styles.css" // Import shared Tailwind styles
 
 const rootEl = document.getElementById("my-widget-root")
 if (rootEl) {
@@ -138,24 +141,26 @@ export default MyWidget
 3. Widget component template (`MyWidget.tsx`):
 
 ```tsx
-import { useWidgetProps } from "../../lib/use-widget-props.js"
-import { WidgetWrapper } from "../components/WidgetWrapper.js"
+import { useOpenAiGlobal } from "../hooks/use-openai-global.js"
+import { Layout } from "../components/Layout.js"
 
 interface MyWidgetProps {
   // Your props from the MCP tool
+  message?: string
 }
 
 export function MyWidget() {
-  const props = useWidgetProps<MyWidgetProps>({})
+  // Get the structured content passed from the MCP tool
+  const toolOutput = useOpenAiGlobal("toolOutput") as MyWidgetProps
 
   return (
-    <WidgetWrapper className="p-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-          {/* Your UI here */}
+    <Layout>
+      <div className="p-6 text-center">
+        <h1 className="text-2xl font-bold text-gray-900">
+          {toolOutput?.message || "Hello World"}
         </h1>
       </div>
-    </WidgetWrapper>
+    </Layout>
   )
 }
 
@@ -173,17 +178,17 @@ The widget will automatically be discovered and built!
 
 ### Styling with Tailwind CSS
 
-All widgets have access to Tailwind CSS utility classes. The `WidgetWrapper` component automatically handles:
+All widgets have access to Tailwind CSS utility classes. The `Layout` component automatically handles:
 
-- **Dark mode**: Use `dark:` prefix for dark mode styles (e.g., `dark:text-white`)
-- **Theme detection**: Automatically detects and applies ChatGPT's theme
-- **Layout constraints**: Optional max-height and safe area support
+- **Theme detection**: Automatically detects and applies theme from OpenAI global data
+- **Layout constraints**: Reports size changes to parent window
+- **Responsive design**: Full Tailwind responsive utilities available
 
 Example styling:
 
 ```tsx
 <div className="flex items-center justify-center min-h-[200px]">
-  <p className="text-gray-500 dark:text-gray-400 animate-pulse">Loading...</p>
+  <p className="text-gray-500 animate-pulse">Loading...</p>
 </div>
 ```
 
@@ -224,11 +229,11 @@ The MCP server loads and serves the built widget HTML:
 
 ### Props Communication
 
-Widgets receive data via the Apps SDK global object:
+Widgets receive data via the OpenAI global object:
 
 ```tsx
-// In your widget
-const props = useWidgetProps<MyProps>({ bubbleCount: 100 })
+// In your widget - access toolOutput from OpenAI globals
+const toolOutput = useOpenAiGlobal("toolOutput") as MyProps
 
 // The server passes data via structuredContent
 return {
@@ -236,6 +241,8 @@ return {
     bubbleCount: validBubbleCount,
   },
 }
+
+// This structuredContent becomes available as toolOutput in the widget
 ```
 
 ## Deployment
@@ -254,32 +261,39 @@ The project includes a `render.yaml` for easy deployment to Render:
 1. Build the project:
 
 ```bash
-BASE_URL=https://your-cdn.com npm run build
+pnpm run build
 ```
 
 2. Deploy:
    - Upload `dist/` directory to your server
-   - Upload `assets/` directory to your CDN
+   - Upload `assets/` directory (HTML files with inlined JS/CSS)
    - Start the server: `node dist/index.js`
+   - Server will run on port 5678 by default (configure with `PORT` env var)
 
 ## Dependencies
 
 ### Runtime
 
 - `react` & `react-dom`: UI framework
-- `framer-motion`: Animation library
 - `@mcp-ui/server`: MCP UI resource creation
 - `@modelcontextprotocol/sdk`: MCP server SDK
+- `express`: HTTP server for MCP protocol
+- `cors`: CORS middleware
+- `zod`: Schema validation
+- `chalk`: Terminal colors and logging
 
 ### Development
 
 - `vite`: Build tool and dev server
 - `@vitejs/plugin-react`: React support for Vite
 - `tsx`: TypeScript execution
+- `vite-node`: Run TypeScript server with hot reload
 - `fast-glob`: File discovery for build system
 - `tailwindcss`: Utility-first CSS framework
 - `postcss`: CSS transformation tool
 - `autoprefixer`: Automatic vendor prefix handling
+- `concurrently`: Run multiple commands in parallel
+- `prettier`: Code formatting
 
 ## Inspiration
 
@@ -292,4 +306,4 @@ This project structure is heavily inspired by the excellent [OpenAI Apps SDK Exa
 
 ## License
 
-ISC
+MIT
