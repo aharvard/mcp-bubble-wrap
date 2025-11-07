@@ -3,6 +3,37 @@ import { Layout } from "../components/Layout.js"
 import { useOpenAiGlobal } from "../hooks/use-openai-global.js"
 import type { BubbleWrapStructuredContent } from "./types.js"
 
+// Add styles for pseudo-element
+const bubbleStyles = `
+  .bubble-button {
+    position: relative;
+  }
+  .bubble-button::after {
+    content: '';
+    position: absolute;
+    top: 3%;
+    left: 3%;
+    width: 90%;
+    height: 90%;
+    background: radial-gradient(circle at 24% 22%, rgb(255 255 255 / 96%) 7%, rgb(170 170 170 / 7%) 68%, transparent 100%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .bubble-button.popped::after {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 90%;
+    height: 90%;
+    background: radial-gradient(circle at 58% 63%, rgb(201 201 213 / 70%), rgb(255 255 255 / 11%) 93%, transparent 36%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 100;
+  }
+`
+
 export function BubbleWrap() {
   const toolOutput = useOpenAiGlobal(
     "toolOutput"
@@ -12,6 +43,7 @@ export function BubbleWrap() {
   const [poppedBubbles, setPoppedBubbles] = React.useState<Set<number>>(
     new Set()
   )
+  const [columns, setColumns] = React.useState(6)
 
   // Debug logging
   useEffect(() => {
@@ -47,26 +79,50 @@ export function BubbleWrap() {
     )
   }, [bubbleCount])
 
+  // Update columns based on window size (matching Tailwind breakpoints)
+  React.useEffect(() => {
+    const updateColumns = () => {
+      const width = window.innerWidth
+      if (width >= 1024) {
+        // lg breakpoint
+        setColumns(12)
+      } else if (width >= 768) {
+        // md breakpoint
+        setColumns(10)
+      } else if (width >= 640) {
+        // sm breakpoint
+        setColumns(8)
+      } else {
+        setColumns(6)
+      }
+    }
+
+    updateColumns()
+    window.addEventListener("resize", updateColumns)
+    return () => window.removeEventListener("resize", updateColumns)
+  }, [])
+
   return (
     <Layout className="p-6">
+      <style>{bubbleStyles}</style>
       {bubbleCount ? (
-        <div className="space-y-6">
+        <div className="bg-[#e0e0e0]">
           {/* Popped bubbles tracker */}
-          <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-4">
+          <div className="sticky top-0 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Total Bubbles
                 </p>
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                <p className="text-3xl font-bold text-black dark:text-white">
                   {bubbleCount}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Popped
                 </p>
-                <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                <p className="text-3xl font-bold text-black dark:text-white">
                   {poppedBubbles.size}
                 </p>
               </div>
@@ -74,55 +130,94 @@ export function BubbleWrap() {
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Remaining
                 </p>
-                <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                <p className="text-3xl font-bold text-black dark:text-white">
                   {bubbleCount - poppedBubbles.size}
                 </p>
               </div>
             </div>
             {poppedBubbles.size === bubbleCount && (
-              <div className="mt-3 p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded text-center">
-                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
-                  🎉 All bubbles popped! Great job!
+              <div className="mt-3 p-2  text-center">
+                <p className="text-sm font-semibold text-black dark:text-white">
+                  All bubbles popped! Great job!
                 </p>
               </div>
             )}
           </div>
 
           {/* Bubble wrap grid */}
-          <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-            {Array.from({ length: bubbleCount }).map((_, index) => {
-              const isPopped = poppedBubbles.has(index)
-              return (
-                <button
-                  key={index}
-                  onClick={() => !isPopped && handleBubblePop(index)}
-                  disabled={isPopped}
-                  className={`
-                    aspect-square rounded-full transition-all duration-300 ease-out
-                    ${
+          <div className="relative p-4 pr-[calc(1rem+8.33%)] sm:pr-[calc(1rem+6.25%)] md:pr-[calc(1rem+5%)] lg:pr-[calc(1rem+4.17%)] bg-[#e0e0e0] dark:bg-gray-900/50">
+            <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
+              {Array.from({ length: bubbleCount }).map((_, index) => {
+                const isPopped = poppedBubbles.has(index)
+                // Calculate row based on current column count
+                const row = Math.floor(index / columns)
+                const isOddRow = row % 2 === 1
+
+                return (
+                  <button
+                    key={index}
+                    onClick={() => !isPopped && handleBubblePop(index)}
+                    disabled={isPopped}
+                    className={`
+                      bubble-button aspect-square transition-all duration-300 ease-out
+                      ${
+                        isPopped
+                          ? "popped opacity-60 cursor-not-allowed"
+                          : "cursor-pointer"
+                      }
+                    `}
+                    style={{
+                      position: "relative",
+                      borderRadius: "50%",
+                      background: isPopped
+                        ? "linear-gradient(145deg, #cacaca, #f0f0f0)"
+                        : "linear-gradient(145deg, #f0f0f0, #cacaca)",
+                      boxShadow: isPopped
+                        ? "6px 6px 12px #cecece, -6px -6px 12px #f2f2f2"
+                        : "12px 12px 24px #b3b3b3, -12px -12px 24px #ffffff",
+                      transform: isOddRow
+                        ? `translateX(50%) ${isPopped ? "" : ""}`
+                        : isPopped
+                          ? ""
+                          : undefined,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isPopped) {
+                        e.currentTarget.style.transform = isOddRow
+                          ? "translateX(50%)"
+                          : ""
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isPopped) {
+                        e.currentTarget.style.transform = isOddRow
+                          ? "translateX(50%)"
+                          : ""
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      if (!isPopped) {
+                        e.currentTarget.style.transform = isOddRow
+                          ? "translateX(50%)"
+                          : ""
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      if (!isPopped) {
+                        e.currentTarget.style.transform = isOddRow
+                          ? "translateX(50%)"
+                          : ""
+                      }
+                    }}
+                    aria-label={
                       isPopped
-                        ? "bg-transparent border-2 border-dashed border-gray-300 dark:border-gray-600 scale-75 opacity-40 cursor-not-allowed"
-                        : "bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 shadow-lg hover:scale-110 hover:shadow-xl active:scale-95 cursor-pointer"
+                        ? `Bubble ${index + 1} popped`
+                        : `Pop bubble ${index + 1}`
                     }
-                    ${!isPopped && "hover:from-blue-500 hover:to-blue-700 dark:hover:from-blue-600 dark:hover:to-blue-800"}
-                  `}
-                  style={{
-                    boxShadow: isPopped
-                      ? "none"
-                      : "0 4px 6px -1px rgba(59, 130, 246, 0.3), inset 0 2px 4px 0 rgba(255, 255, 255, 0.4)",
-                  }}
-                  aria-label={
-                    isPopped
-                      ? `Bubble ${index + 1} popped`
-                      : `Pop bubble ${index + 1}`
-                  }
-                >
-                  {!isPopped && (
-                    <span className="block w-full h-full rounded-full bg-gradient-to-br from-white/30 to-transparent" />
-                  )}
-                </button>
-              )
-            })}
+                  ></button>
+                )
+              })}
+            </div>
           </div>
         </div>
       ) : (
