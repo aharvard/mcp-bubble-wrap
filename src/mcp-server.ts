@@ -8,42 +8,59 @@ import {
   bubbleWrapOutputSchema,
   type BubbleWrapStructuredContent,
 } from "./widgets/bubble-wrap/types.js"
+import {
+  packingSlipOutputSchema,
+  type PackingSlipStructuredContent,
+} from "./widgets/packing-slip/types.js"
 
 // Get the directory of the current module
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-// Template URI for Apps SDK
+// Template URIs for Apps SDK
 const BUBBLE_WRAP_TEMPLATE_URI = "ui://widgets/bubble-wrap"
+const PACKING_SLIP_TEMPLATE_URI = "ui://widgets/packing-slip"
 
 // Determine base URL for assets (use environment variable or default to localhost)
 const BASE_URL = process.env.BASE_URL || "http://localhost:4444"
 
-// Widget HTML (loaded once on first use)
-let widgetHtml: string | null = null
+// Widget HTML cache (loaded once on first use)
+let bubbleWrapWidgetHtml: string | null = null
+let packingSlipWidgetHtml: string | null = null
 
 /**
  * Load the built widget HTML from the assets directory
  */
-function loadWidgetHtml(): string {
-  if (widgetHtml) {
-    return widgetHtml
+function loadWidgetHtml(widgetName: string): string {
+  // Check cache
+  if (widgetName === "bubble-wrap" && bubbleWrapWidgetHtml) {
+    return bubbleWrapWidgetHtml
+  }
+  if (widgetName === "packing-slip" && packingSlipWidgetHtml) {
+    return packingSlipWidgetHtml
   }
 
   try {
     // Read the unhashed HTML file from assets directory
-    // The build script generates bubble-wrap.html (unhashed for quick cache updates)
     const assetsDir = join(__dirname, "..", "assets")
-    const htmlFile = "bubble-wrap.html"
+    const htmlFile = `${widgetName}.html`
     const assetsPath = join(assetsDir, htmlFile)
 
-    widgetHtml = readFileSync(assetsPath, "utf-8")
-    console.log("Loaded bubble-wrap HTML from:", htmlFile)
-    return widgetHtml
+    const html = readFileSync(assetsPath, "utf-8")
+    console.log(`Loaded ${widgetName} HTML from:`, htmlFile)
+
+    // Cache it
+    if (widgetName === "bubble-wrap") {
+      bubbleWrapWidgetHtml = html
+    } else if (widgetName === "packing-slip") {
+      packingSlipWidgetHtml = html
+    }
+
+    return html
   } catch (error) {
     // Fallback: if assets aren't built yet, return a dev-mode HTML
     console.error(
-      "Widget assets not found, using dev mode HTML. Run 'npm run build:widgets' first.",
+      `${widgetName} widget assets not found, using dev mode HTML. Run 'npm run build:widgets' first.`,
       error
     )
     return `<!doctype html>
@@ -53,7 +70,7 @@ function loadWidgetHtml(): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-  <p>Widget assets not found, using dev mode HTML. Run 'npm run build:widgets' first.</p>
+  <p>${widgetName} widget assets not found, using dev mode HTML. Run 'npm run build:widgets' first.</p>
 </body>
 </html>`
   }
@@ -66,9 +83,11 @@ export function initMcpServer(): McpServer {
     version: "1.0.0",
   })
 
-  // Step 1: Register the Apps SDK template resource
-  // This template is for ChatGPT (Apps SDK) and includes the adapter
-  const appsSdkTemplate = createUIResource({
+  // Step 1: Register the Apps SDK template resources
+  // These templates are for ChatGPT (Apps SDK) and include the adapter
+
+  // Bubble Wrap template
+  const bubbleWrapTemplate = createUIResource({
     uri: BUBBLE_WRAP_TEMPLATE_URI,
     encoding: "text",
     adapters: {
@@ -79,24 +98,47 @@ export function initMcpServer(): McpServer {
     },
     content: {
       type: "rawHtml",
-      htmlString: loadWidgetHtml(),
+      htmlString: loadWidgetHtml("bubble-wrap"),
     },
     metadata: {
       "openai/widgetDescription":
         "An interactive bubble wrap simulator where you can pop virtual bubbles for stress relief",
       "openai/widgetPrefersBorder": true,
-      // we don't technically need to set domains to BASE_URL since we are inlining JS and CSS in the HTML
-      // however, I'm leaving this in as an example of how to set CSP domains
-      // we likely need to provide domains for fonts at some point
       "openai/widgetCSP": {
         connect_domains: [BASE_URL],
         resource_domains: [BASE_URL],
       },
-      "dev/widgetHtml": widgetHtml,
+      "dev/widgetHtml": bubbleWrapWidgetHtml,
     },
   })
 
-  // Register the template as a resource
+  // Packing Slip template
+  const packingSlipTemplate = createUIResource({
+    uri: PACKING_SLIP_TEMPLATE_URI,
+    encoding: "text",
+    adapters: {
+      appsSdk: {
+        enabled: true,
+        config: { intentHandling: "prompt" },
+      },
+    },
+    content: {
+      type: "rawHtml",
+      htmlString: loadWidgetHtml("packing-slip"),
+    },
+    metadata: {
+      "openai/widgetDescription":
+        "A utilitarian widget for testing platform features and capabilities",
+      "openai/widgetPrefersBorder": true,
+      "openai/widgetCSP": {
+        connect_domains: [BASE_URL],
+        resource_domains: [BASE_URL],
+      },
+      "dev/widgetHtml": packingSlipWidgetHtml,
+    },
+  })
+
+  // Register the templates as resources
   server.registerResource(
     "bubble-wrap-template",
     BUBBLE_WRAP_TEMPLATE_URI,
@@ -106,7 +148,20 @@ export function initMcpServer(): McpServer {
       mimeType: "text/html",
     },
     async (uri) => ({
-      contents: [appsSdkTemplate.resource],
+      contents: [bubbleWrapTemplate.resource],
+    })
+  )
+
+  server.registerResource(
+    "packing-slip-template",
+    PACKING_SLIP_TEMPLATE_URI,
+    {
+      title: "Packing Slip Template",
+      description: "Template for Apps SDK",
+      mimeType: "text/html",
+    },
+    async (uri) => ({
+      contents: [packingSlipTemplate.resource],
     })
   )
 
@@ -148,7 +203,7 @@ export function initMcpServer(): McpServer {
         encoding: "text",
         content: {
           type: "rawHtml",
-          htmlString: loadWidgetHtml(),
+          htmlString: loadWidgetHtml("bubble-wrap"),
         },
       })
 
@@ -162,6 +217,55 @@ export function initMcpServer(): McpServer {
           {
             type: "text",
             text: `Created a bubble wrap simulator with ${validBubbleCount} bubbles. Click to pop them all!`,
+          },
+          uiResource,
+        ],
+        // Structured content for Apps SDK - type-safe!
+        structuredContent,
+      }
+    }
+  )
+
+  // Register the show_packing_slip tool
+  server.registerTool(
+    "show_packing_slip",
+    {
+      title: "Show Packing Slip",
+      description:
+        "Display a utilitarian widget for testing platform features and capabilities. Takes no inputs.",
+      inputSchema: {},
+      outputSchema: packingSlipOutputSchema.shape,
+      _meta: {
+        "openai/outputTemplate": PACKING_SLIP_TEMPLATE_URI,
+        "openai/toolInvocation/invoking": "Opening packing slip...",
+        "openai/toolInvocation/invoked": "Packing slip ready for testing!",
+        "openai/widgetAccessible": true,
+      },
+    },
+    async () => {
+      const timestamp = new Date().toISOString()
+
+      // Create MCP-UI embedded resource (without Apps SDK adapter)
+      // This is for MCP-native hosts
+      const uiResource = createUIResource({
+        uri: `ui://widgets/packing-slip/${timestamp}`,
+        encoding: "text",
+        content: {
+          type: "rawHtml",
+          htmlString: loadWidgetHtml("packing-slip"),
+        },
+      })
+
+      // Return both text content and the UI resource
+      const structuredContent: PackingSlipStructuredContent = {
+        timestamp,
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Packing slip widget opened at ${timestamp}. Use the interface to test platform features.`,
           },
           uiResource,
         ],
