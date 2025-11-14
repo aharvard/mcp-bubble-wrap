@@ -39,6 +39,43 @@ export function BubbleWrap() {
     "toolOutput"
   ) as BubbleWrapStructuredContent
 
+  useEffect(() => {
+    console.log("✨Restaurants widget rendered")
+    // Request render data when ready
+    const requestRenderData = async () => {
+      return new Promise((resolve, reject) => {
+        const messageId = crypto.randomUUID()
+
+        window.parent.postMessage(
+          { type: "ui-request-render-data", messageId },
+          "*"
+        )
+
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data?.type !== "ui-lifecycle-iframe-render-data") return
+          if (event.data.messageId !== messageId) return
+
+          window.removeEventListener("message", handleMessage)
+
+          const { renderData, error } = event.data.payload
+          if (error) return reject(error)
+          return resolve(renderData)
+        }
+
+        window.addEventListener("message", handleMessage)
+      })
+    }
+
+    // Use it when your iframe is ready
+    requestRenderData()
+      .then((renderData) => {
+        console.log("👉 Render data:", renderData)
+      })
+      .catch((error) => {
+        console.error("❌ Error requesting render data:", error)
+      })
+  }, [])
+
   const bubbleCount = toolOutput?.bubbleCount
   const [poppedBubbles, setPoppedBubbles] = React.useState<Set<number>>(
     new Set()
