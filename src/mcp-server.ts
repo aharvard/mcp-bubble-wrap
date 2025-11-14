@@ -100,12 +100,7 @@ export function initMcpServer(): McpServer {
       type: "rawHtml",
       htmlString: loadWidgetHtml("bubble-wrap"),
     },
-    uiMetadata: {
-      "initial-render-data": {
-        firstName: "Andrew",
-        lastName: "Harvard",
-      },
-    },
+
     metadata: {
       "openai/widgetDescription":
         "An interactive bubble wrap simulator where you can pop virtual bubbles for stress relief",
@@ -202,6 +197,11 @@ export function initMcpServer(): McpServer {
         500
       )
 
+      // Return both text content and the UI resource
+      const structuredContent: BubbleWrapStructuredContent = {
+        bubbleCount: validBubbleCount,
+      }
+
       // Create MCP-UI embedded resource (without Apps SDK adapter)
       // This is for MCP-native hosts
       const uiResource = createUIResource({
@@ -211,12 +211,14 @@ export function initMcpServer(): McpServer {
           type: "rawHtml",
           htmlString: loadWidgetHtml("bubble-wrap"),
         },
+        uiMetadata: {
+          "initial-render-data": {
+            firstName: "Andrew",
+            lastName: "Harvard",
+            structuredContent,
+          },
+        },
       })
-
-      // Return both text content and the UI resource
-      const structuredContent: BubbleWrapStructuredContent = {
-        bubbleCount: validBubbleCount,
-      }
 
       return {
         content: [
