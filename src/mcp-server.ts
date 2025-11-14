@@ -100,6 +100,12 @@ export function initMcpServer(): McpServer {
       type: "rawHtml",
       htmlString: loadWidgetHtml("bubble-wrap"),
     },
+    uiMetadata: {
+      "initial-render-data": {
+        firstName: "Andrew",
+        lastName: "Harvard",
+      },
+    },
     metadata: {
       "openai/widgetDescription":
         "An interactive bubble wrap simulator where you can pop virtual bubbles for stress relief",
