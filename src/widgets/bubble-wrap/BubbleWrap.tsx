@@ -39,6 +39,8 @@ export function BubbleWrap() {
     "toolOutput"
   ) as BubbleWrapStructuredContent
 
+  const [renderData, setRenderData] = React.useState<any>(null)
+
   useEffect(() => {
     console.log("✨Restaurants widget rendered")
     // Request render data when ready
@@ -68,15 +70,17 @@ export function BubbleWrap() {
 
     // Use it when your iframe is ready
     requestRenderData()
-      .then((renderData) => {
-        console.log("👉 Render data:", renderData)
+      .then((data) => {
+        console.log("👉 Render data:", data)
+        setRenderData(data)
       })
       .catch((error) => {
         console.error("❌ Error requesting render data:", error)
       })
   }, [])
 
-  const bubbleCount = toolOutput?.bubbleCount
+  const bubbleCount =
+    toolOutput?.bubbleCount ?? renderData?.structuredContent?.bubbleCount
   const [poppedBubbles, setPoppedBubbles] = React.useState<Set<number>>(
     new Set()
   )
