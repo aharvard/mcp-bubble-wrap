@@ -49,14 +49,14 @@ function wrapEntryPlugin(
   }
 }
 
-// Prepare output directory (wipe on each build)
+// Prepare output directory (create if doesn't exist)
 const outPath = path.join(rootDir, outDir)
-if (fs.existsSync(outPath)) {
-  console.log("Wiping assets directory...")
-  fs.rmSync(outPath, { recursive: true, force: true })
+if (!fs.existsSync(outPath)) {
+  fs.mkdirSync(outPath, { recursive: true })
+  console.log("Created assets directory")
+} else {
+  console.log("Using existing assets directory")
 }
-fs.mkdirSync(outPath, { recursive: true })
-console.log("Created fresh assets directory")
 
 for (const file of entries) {
   const name = path.basename(path.dirname(file))

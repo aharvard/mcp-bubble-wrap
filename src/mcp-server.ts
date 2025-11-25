@@ -15,12 +15,33 @@ const __dirname = dirname(__filename)
 
 // Template URIs for Apps SDK
 const BUBBLE_WRAP_TEMPLATE_URI = "ui://widgets/bubble-wrap"
+const RESTAURANTS_WIDGET_TEMPLATE_URI = "ui://widgets/restaurants-widget"
 
 // Determine base URL for assets (use environment variable or default to localhost)
 const BASE_URL = process.env.BASE_URL || "http://localhost:4444"
 
 // Widget HTML cache (loaded once on first use)
 let bubbleWrapWidgetHtml: string | null = null
+let restaurantsWidgetHtml: string | null = null
+
+// Load manifest for hashed widget files
+let manifest: {
+  hash: string
+  widgets: Array<{ name: string; htmlPath: string }>
+} | null = null
+
+function loadManifest() {
+  if (manifest) return manifest
+  try {
+    const assetsDir = join(__dirname, "..", "assets")
+    const manifestPath = join(assetsDir, "manifest.json")
+    manifest = JSON.parse(readFileSync(manifestPath, "utf-8"))
+    return manifest
+  } catch (error) {
+    console.error("Failed to load manifest:", error)
+    return null
+  }
+}
 
 /**
  * Load the built widget HTML from the assets directory
@@ -30,19 +51,34 @@ function loadWidgetHtml(widgetName: string): string {
   if (widgetName === "bubble-wrap" && bubbleWrapWidgetHtml) {
     return bubbleWrapWidgetHtml
   }
+  if (widgetName === "restaurants-widget" && restaurantsWidgetHtml) {
+    return restaurantsWidgetHtml
+  }
 
   try {
-    // Read the unhashed HTML file from assets directory
     const assetsDir = join(__dirname, "..", "assets")
-    const htmlFile = `${widgetName}.html`
-    const assetsPath = join(assetsDir, htmlFile)
+    let htmlFile: string
 
+    // For widgets with hashes, use the manifest
+    const manifest = loadManifest()
+    const widgetEntry = manifest?.widgets.find((w) => w.name === widgetName)
+
+    if (widgetEntry) {
+      htmlFile = widgetEntry.htmlPath
+    } else {
+      // Fallback to unhashed name
+      htmlFile = `${widgetName}.html`
+    }
+
+    const assetsPath = join(assetsDir, htmlFile)
     const html = readFileSync(assetsPath, "utf-8")
     console.log(`Loaded ${widgetName} HTML from:`, htmlFile)
 
     // Cache it
     if (widgetName === "bubble-wrap") {
       bubbleWrapWidgetHtml = html
+    } else if (widgetName === "restaurants-widget") {
+      restaurantsWidgetHtml = html
     }
 
     return html
@@ -102,6 +138,32 @@ export function initMcpServer(): McpServer {
     },
   })
 
+  // Restaurants Widget template
+  const restaurantsWidgetTemplate = createUIResource({
+    uri: RESTAURANTS_WIDGET_TEMPLATE_URI,
+    encoding: "text",
+    adapters: {
+      appsSdk: {
+        enabled: true,
+        config: { intentHandling: "prompt" },
+      },
+    },
+    content: {
+      type: "rawHtml",
+      htmlString: loadWidgetHtml("restaurants-widget"),
+    },
+    metadata: {
+      "openai/widgetDescription":
+        "An interactive widget for displaying and managing restaurants",
+      "openai/widgetPrefersBorder": true,
+      "openai/widgetCSP": {
+        connect_domains: [BASE_URL],
+        resource_domains: [BASE_URL],
+      },
+      "dev/widgetHtml": restaurantsWidgetHtml,
+    },
+  })
+
   // Register the templates as resources
   server.registerResource(
     "bubble-wrap-template",
@@ -113,6 +175,19 @@ export function initMcpServer(): McpServer {
     },
     async (uri) => ({
       contents: [bubbleWrapTemplate.resource],
+    })
+  )
+
+  server.registerResource(
+    "restaurants-widget-template",
+    RESTAURANTS_WIDGET_TEMPLATE_URI,
+    {
+      title: "Restaurants Widget Template",
+      description: "Template for Apps SDK",
+      mimeType: "text/html",
+    },
+    async (uri) => ({
+      contents: [restaurantsWidgetTemplate.resource],
     })
   )
 
@@ -180,6 +255,133 @@ export function initMcpServer(): McpServer {
         ],
         // Structured content for Apps SDK - type-safe!
         structuredContent,
+      }
+    }
+  )
+
+  // Step 2 & 3: Register the restaurants widget tool
+  server.registerTool(
+    "test-rest-widget",
+    {
+      title: "Test Restaurant Widget",
+      description: "test the restaurant widget",
+      inputSchema: {},
+      _meta: {
+        "openai/outputTemplate": RESTAURANTS_WIDGET_TEMPLATE_URI,
+        "openai/toolInvocation/invoking": "Loading restaurant widget...",
+        "openai/toolInvocation/invoked": "Restaurant widget loaded!",
+        "openai/widgetAccessible": true,
+      },
+    },
+    async () => {
+      const MOCK_RESTAURANTS = [
+        {
+          name: "Tony's Pizza Palace",
+          cuisine: "Coffee Shops Restaurants And Bars",
+          rating: 4.5,
+          distance: "0.3 miles",
+          address: "1427 Via Camozzi",
+          hours: "11:00 AM - 10:00 PM",
+          isOpen: true,
+          price: "$$",
+          description:
+            "A tiny, brick-walled trattoria tucked down a side street near Washington Square Park",
+          imageUrl:
+            "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop",
+          timeSlots: ["6:00pm", "6:30pm"],
+        },
+        {
+          name: "Brick & Basil",
+          cuisine: "Coffee Shops Restaurants And Bars",
+          rating: 4.5,
+          distance: "0.5 miles",
+          address: "1432 Shattuck Ave",
+          hours: "10:00 AM - 11:00 PM",
+          isOpen: true,
+          price: "$$$",
+          description:
+            "A music-themed slice shop in a converted record store, with vintage albums on the walls",
+          imageUrl:
+            "https://images.unsplash.com/photo-1571997478779-2adcbbe9ab2f?w=400&h=300&fit=crop",
+          timeSlots: [
+            { time: "5:30pm", available: false },
+            { time: "6:00pm", available: true },
+            { time: "6:30pm", available: true },
+            { time: "7:00pm", available: false },
+          ],
+        },
+        {
+          name: "Dough-Re-Mi",
+          cuisine: "Italian Restaurant",
+          rating: 4.8,
+          distance: "0.7 miles",
+          address: "512 Harmony Avenue",
+          hours: "5:00 PM - 10:00 PM",
+          isOpen: false,
+          price: "$$$$",
+          description:
+            "A music-themed slice shop in a converted record store, with vintage albums on the walls",
+          imageUrl:
+            "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop",
+          timeSlots: ["6:00pm", "6:30pm"],
+        },
+        {
+          name: "The Golden Dragon",
+          cuisine: "Chinese Restaurant",
+          rating: 4.3,
+          distance: "0.4 miles",
+          address: "321 Pine St, San Francisco, CA",
+          hours: "11:30 AM - 9:30 PM",
+          isOpen: true,
+          price: "$$",
+          description: "Authentic Cantonese cuisine with traditional dim sum",
+          timeSlots: ["6:00pm", "6:30pm"],
+        },
+        {
+          name: "Whole Foods Market",
+          cuisine: "Food Retailers",
+          rating: 4.1,
+          distance: "0.2 miles",
+          address: "654 Castro St, San Francisco, CA",
+          hours: "8:00 AM - 9:00 PM",
+          isOpen: false,
+          price: "$$",
+          description:
+            "Organic grocery store with prepared foods and fresh produce",
+          imageUrl:
+            "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=300&fit=crop",
+          timeSlots: ["6:00pm", "6:30pm"],
+        },
+      ]
+
+      // Create MCP-UI embedded resource (without Apps SDK adapter)
+      // This is for MCP-native hosts
+      const uiResource = createUIResource({
+        uri: `ui://widgets/restaurants-widget/test`,
+        encoding: "text",
+        content: {
+          type: "rawHtml",
+          htmlString: loadWidgetHtml("restaurants-widget"),
+        },
+        uiMetadata: {
+          "initial-render-data": {
+            firstName: "Andrew",
+            lastName: "Harvard",
+          },
+        },
+      })
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Restaurant widget loaded successfully!`,
+          },
+          uiResource,
+        ],
+        structuredContent: {
+          restaurants: MOCK_RESTAURANTS,
+        },
       }
     }
   )
