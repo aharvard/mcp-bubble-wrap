@@ -13,17 +13,6 @@ import {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-// Template URIs for Apps SDK
-const BUBBLE_WRAP_TEMPLATE_URI = "ui://widgets/bubble-wrap"
-const RESTAURANTS_WIDGET_TEMPLATE_URI = "ui://widgets/restaurants-widget"
-
-// Determine base URL for assets (use environment variable or default to localhost)
-const BASE_URL = process.env.BASE_URL || "http://localhost:4444"
-
-// Widget HTML cache (loaded once on first use)
-let bubbleWrapWidgetHtml: string | null = null
-let restaurantsWidgetHtml: string | null = null
-
 // Load manifest for hashed widget files
 let manifest: {
   hash: string
@@ -42,6 +31,24 @@ function loadManifest() {
     return null
   }
 }
+
+// Load manifest early to get hash for template URIs
+const loadedManifest = loadManifest()
+
+// Get hash from manifest or use fallback
+const widgetHash = loadedManifest?.hash || "unknown"
+
+// Template URIs for Apps SDK
+const BUBBLE_WRAP_TEMPLATE_URI = "ui://widgets/bubble-wrap"
+const RESTAURANTS_WIDGET_TEMPLATE_URI =
+  `ui://widgets/restaurants-widget-${widgetHash}.html` as `ui://${string}`
+
+// Determine base URL for assets (use environment variable or default to localhost)
+const BASE_URL = process.env.BASE_URL || "http://localhost:4444"
+
+// Widget HTML cache (loaded once on first use)
+let bubbleWrapWidgetHtml: string | null = null
+let restaurantsWidgetHtml: string | null = null
 
 /**
  * Load the built widget HTML from the assets directory
@@ -140,7 +147,7 @@ export function initMcpServer(): McpServer {
 
   // Restaurants Widget template
   const restaurantsWidgetTemplate = createUIResource({
-    uri: `${RESTAURANTS_WIDGET_TEMPLATE_URI}-${manifest?.hash}.html`,
+    uri: RESTAURANTS_WIDGET_TEMPLATE_URI,
     encoding: "text",
     adapters: {
       appsSdk: {
