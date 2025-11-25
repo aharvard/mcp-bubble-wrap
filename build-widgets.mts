@@ -187,18 +187,12 @@ ${jsContent}
   }
 }
 
-// Copy test-widgets directory to assets
+// Copy test-widgets contents directly to assets
 const testWidgetsSource = path.join(rootDir, "src", "widgets", "test-widgets")
-const testWidgetsDest = path.join(outPath, "test-widgets")
 
 if (fs.existsSync(testWidgetsSource)) {
   try {
-    // Create test-widgets directory in assets if it doesn't exist
-    if (!fs.existsSync(testWidgetsDest)) {
-      fs.mkdirSync(testWidgetsDest, { recursive: true })
-    }
-
-    // Copy all files from test-widgets
+    // Copy all files from test-widgets directly to assets
     const copyRecursive = (src: string, dest: string) => {
       const entries = fs.readdirSync(src, { withFileTypes: true })
       for (const entry of entries) {
@@ -213,8 +207,8 @@ if (fs.existsSync(testWidgetsSource)) {
       }
     }
 
-    copyRecursive(testWidgetsSource, testWidgetsDest)
-    console.log(`Copied test-widgets to ${outDir}/test-widgets/`)
+    copyRecursive(testWidgetsSource, outPath)
+    console.log(`Copied test-widgets contents to ${outDir}/`)
   } catch (error) {
     console.error("Failed to copy test-widgets:", error)
   }

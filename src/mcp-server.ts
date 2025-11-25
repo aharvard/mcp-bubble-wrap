@@ -140,7 +140,7 @@ export function initMcpServer(): McpServer {
 
   // Restaurants Widget template
   const restaurantsWidgetTemplate = createUIResource({
-    uri: RESTAURANTS_WIDGET_TEMPLATE_URI,
+    uri: `${RESTAURANTS_WIDGET_TEMPLATE_URI}-${manifest?.hash}.html`,
     encoding: "text",
     adapters: {
       appsSdk: {
