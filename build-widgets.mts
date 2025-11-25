@@ -187,4 +187,37 @@ ${jsContent}
   }
 }
 
+// Copy test-widgets directory to assets
+const testWidgetsSource = path.join(rootDir, "src", "widgets", "test-widgets")
+const testWidgetsDest = path.join(outPath, "test-widgets")
+
+if (fs.existsSync(testWidgetsSource)) {
+  try {
+    // Create test-widgets directory in assets if it doesn't exist
+    if (!fs.existsSync(testWidgetsDest)) {
+      fs.mkdirSync(testWidgetsDest, { recursive: true })
+    }
+
+    // Copy all files from test-widgets
+    const copyRecursive = (src: string, dest: string) => {
+      const entries = fs.readdirSync(src, { withFileTypes: true })
+      for (const entry of entries) {
+        const srcPath = path.join(src, entry.name)
+        const destPath = path.join(dest, entry.name)
+        if (entry.isDirectory()) {
+          fs.mkdirSync(destPath, { recursive: true })
+          copyRecursive(srcPath, destPath)
+        } else {
+          fs.copyFileSync(srcPath, destPath)
+        }
+      }
+    }
+
+    copyRecursive(testWidgetsSource, testWidgetsDest)
+    console.log(`Copied test-widgets to ${outDir}/test-widgets/`)
+  } catch (error) {
+    console.error("Failed to copy test-widgets:", error)
+  }
+}
+
 console.log("\n✅ Widget build complete!")

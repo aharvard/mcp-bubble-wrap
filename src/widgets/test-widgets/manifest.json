@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "hash": "a6b4353c",
+  "widgets": [
+    {
+      "name": "cart-widget",
+      "uri": "ui://widget/cart-widget-a6b4353c.html",
+      "htmlPath": "cart-widget-a6b4353c.html"
+    },
+    {
+      "name": "menu-widget",
+      "uri": "ui://widget/menu-widget-a6b4353c.html",
+      "htmlPath": "menu-widget-a6b4353c.html"
+    },
+    {
+      "name": "restaurants-widget",
+      "uri": "ui://widget/restaurants-widget-a6b4353c.html",
+      "htmlPath": "restaurants-widget-a6b4353c.html"
+    },
+    {
+      "name": "services-widget",
+      "uri": "ui://widget/services-widget-a6b4353c.html",
+      "htmlPath": "services-widget-a6b4353c.html"
+    },
+    {
+      "name": "staff-widget",
+      "uri": "ui://widget/staff-widget-a6b4353c.html",
+      "htmlPath": "staff-widget-a6b4353c.html"
+    }
+  ]
+}
