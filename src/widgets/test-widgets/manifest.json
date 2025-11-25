@@ -1,31 +1,31 @@
 {
   "version": "1.0.0",
-  "hash": "5e978b6c",
+  "hash": "d76936bc",
   "widgets": [
     {
       "name": "cart-widget",
-      "uri": "ui://widget/cart-widget-5e978b6c.html",
-      "htmlPath": "cart-widget-5e978b6c.html"
+      "uri": "ui://widget/cart-widget-d76936bc.html",
+      "htmlPath": "cart-widget-d76936bc.html"
     },
     {
       "name": "menu-widget",
-      "uri": "ui://widget/menu-widget-5e978b6c.html",
-      "htmlPath": "menu-widget-5e978b6c.html"
+      "uri": "ui://widget/menu-widget-d76936bc.html",
+      "htmlPath": "menu-widget-d76936bc.html"
     },
     {
       "name": "restaurants-widget",
-      "uri": "ui://widget/restaurants-widget-5e978b6c.html",
-      "htmlPath": "restaurants-widget-5e978b6c.html"
+      "uri": "ui://widget/restaurants-widget-d76936bc.html",
+      "htmlPath": "restaurants-widget-d76936bc.html"
     },
     {
       "name": "services-widget",
-      "uri": "ui://widget/services-widget-5e978b6c.html",
-      "htmlPath": "services-widget-5e978b6c.html"
+      "uri": "ui://widget/services-widget-d76936bc.html",
+      "htmlPath": "services-widget-d76936bc.html"
     },
     {
       "name": "staff-widget",
-      "uri": "ui://widget/staff-widget-5e978b6c.html",
-      "htmlPath": "staff-widget-5e978b6c.html"
+      "uri": "ui://widget/staff-widget-d76936bc.html",
+      "htmlPath": "staff-widget-d76936bc.html"
     }
   ]
 }
