@@ -154,6 +154,30 @@ for (const name of builtNames) {
     cssContent = fs.readFileSync(cssPath, "utf8")
   }
 
+  // Embed audio file as base64 data URL for bubble-wrap widget
+  let audioDataUrl = ""
+  if (name === "bubble-wrap") {
+    const audioPath = path.join(outPath, "audio", "pop.mp3")
+    if (fs.existsSync(audioPath)) {
+      const audioBuffer = fs.readFileSync(audioPath)
+      audioDataUrl = audioBuffer.toString("base64")
+      console.log(
+        `Embedded audio file: ${audioPath} (${Math.round(audioBuffer.length / 1024)}KB)`
+      )
+    }
+  }
+
+  // Inject audio data URL into JS if available
+  if (audioDataUrl && jsContent) {
+    // Replace the audio URL with base64 data URL
+    // Handle both minified and non-minified code
+    jsContent = jsContent.replace(
+      /"http:\/\/localhost:4444\/audio\/pop\.mp3"/g,
+      `"data:audio/mpeg;base64,${audioDataUrl}"`
+    )
+    console.log(`Injected audio data URL into ${name} widget`)
+  }
+
   const html = `<!doctype html>
 <!-- Built: ${new Date().toISOString()} -->
 <html>
@@ -184,6 +208,36 @@ ${jsContent}
   if (fs.existsSync(cssPath)) {
     fs.unlinkSync(cssPath)
     console.log(`Deleted: ${path.basename(cssPath)}`)
+  }
+}
+
+// Copy source assets to build output
+const sourceAssetsDir = path.join(rootDir, "src", "assets")
+
+if (fs.existsSync(sourceAssetsDir)) {
+  try {
+    // Copy all files from src/assets recursively to assets
+    const copyRecursive = (src: string, dest: string) => {
+      const entries = fs.readdirSync(src, { withFileTypes: true })
+      for (const entry of entries) {
+        const srcPath = path.join(src, entry.name)
+        const destPath = path.join(dest, entry.name)
+        if (entry.isDirectory()) {
+          fs.mkdirSync(destPath, { recursive: true })
+          copyRecursive(srcPath, destPath)
+        } else {
+          fs.copyFileSync(srcPath, destPath)
+          console.log(
+            `Copied asset: src/assets/${path.relative(sourceAssetsDir, srcPath)} → ${outDir}/${path.relative(outPath, destPath)}`
+          )
+        }
+      }
+    }
+
+    copyRecursive(sourceAssetsDir, outPath)
+    console.log(`Copied source assets to ${outDir}/`)
+  } catch (error) {
+    console.error("Failed to copy source assets:", error)
   }
 }
 

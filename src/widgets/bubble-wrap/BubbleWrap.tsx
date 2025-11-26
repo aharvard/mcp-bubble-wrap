@@ -46,6 +46,20 @@ export function BubbleWrap() {
 
   const [renderData, setRenderData] = React.useState<any>(null)
 
+  // Audio element for pop sound
+  const audioRef = React.useRef<HTMLAudioElement | null>(null)
+
+  // Initialize audio element
+  React.useEffect(() => {
+    // Audio URL - will be replaced with base64 data URL during build
+    // This allows the audio to be self-contained in the widget HTML
+    const audioUrl = "http://localhost:4444/audio/pop.mp3"
+
+    audioRef.current = new Audio(audioUrl)
+    audioRef.current.preload = "auto"
+    audioRef.current.volume = 0.5 // Set volume to 50%
+  }, [])
+
   useEffect(() => {
     console.log("✨Restaurants widget rendered")
     // Request render data when ready
@@ -156,6 +170,17 @@ export function BubbleWrap() {
   }, [bubbleCount])
 
   const handleBubblePop = async (index: number) => {
+    // Play pop sound
+    if (audioRef.current) {
+      try {
+        audioRef.current.currentTime = 0
+        await audioRef.current.play()
+      } catch (error) {
+        // Silently handle autoplay restrictions or other errors
+        console.error("[BubbleWrap] Error playing audio:", error)
+      }
+    }
+
     setPoppedBubbles((prev) => {
       const newSet = new Set(prev)
       newSet.add(index)

@@ -3,7 +3,9 @@ node_modules/
 
 # Build output
 dist/
-assets/
+/assets/
+# Allow src/assets/ to be tracked (source assets)
+!/src/assets/
 
 # Environment variables
 .env
