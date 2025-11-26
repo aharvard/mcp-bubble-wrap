@@ -199,6 +199,14 @@ export function BubbleWrap() {
     }
   }
 
+  const handlePictureInPicture = async () => {
+    try {
+      await window.openai?.requestDisplayMode({ mode: "pip" })
+    } catch (error) {
+      console.error("Error requesting picture-in-picture:", error)
+    }
+  }
+
   useEffect(() => {
     window.parent.postMessage(
       {
@@ -279,25 +287,48 @@ export function BubbleWrap() {
 
           {/* Bubble wrap grid */}
           <div className="relative p-4 pr-[calc(1rem+8.33%)] sm:pr-[calc(1rem+6.25%)] md:pr-[calc(1rem+5%)] lg:pr-[calc(1rem+4.17%)] pb-20 bg-[#e0e0e0]">
-            {/* Fullscreen button */}
-            <button
-              onClick={handleFullscreen}
-              className="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-white/40 hover:bg-white shadow-md hover:shadow-lg rounded-full transition-all flex items-center justify-center z-50 border border-gray-200"
-              aria-label="Enter fullscreen"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-4 h-4 text-gray-700"
+            {/* Display mode buttons */}
+            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 z-50">
+              {/* Picture-in-picture button */}
+              <button
+                onClick={handlePictureInPicture}
+                className="w-8 h-8 bg-white/40 hover:bg-white shadow-md hover:shadow-lg rounded-full transition-all flex items-center justify-center border border-gray-200"
+                aria-label="Enter picture-in-picture"
               >
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4 text-gray-700"
+                >
+                  <rect x="2" y="2" width="16" height="12" rx="2" />
+                  <rect x="14" y="14" width="8" height="8" rx="2" />
+                </svg>
+              </button>
+              {/* Fullscreen button */}
+              <button
+                onClick={handleFullscreen}
+                className="w-8 h-8 bg-white/40 hover:bg-white shadow-md hover:shadow-lg rounded-full transition-all flex items-center justify-center border border-gray-200"
+                aria-label="Enter fullscreen"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4 text-gray-700"
+                >
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                </svg>
+              </button>
+            </div>
             <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
               {Array.from({ length: bubbleCount }).map((_, index) => {
                 const isPopped = poppedBubbles.has(index)
