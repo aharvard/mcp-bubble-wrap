@@ -88,20 +88,47 @@ export function BubbleWrap() {
     toolOutput?.bubbleCount ?? renderData?.structuredContent?.bubbleCount
 
   // Initialize popped bubbles from widgetState if available
-  const [poppedBubbles, setPoppedBubbles] = React.useState<Set<number>>(() => {
-    if (widgetState?.poppedBubbles) {
-      return new Set(widgetState.poppedBubbles)
-    }
-    return new Set()
-  })
+  const [poppedBubbles, setPoppedBubbles] = React.useState<Set<number>>(
+    new Set()
+  )
   const [columns, setColumns] = React.useState(6)
+  const [hasInitialized, setHasInitialized] = React.useState(false)
 
-  // Sync popped bubbles from widgetState when it changes
+  // Initialize from widgetState when it becomes available
   React.useEffect(() => {
-    if (widgetState?.poppedBubbles) {
+    if (!hasInitialized && widgetState?.poppedBubbles) {
+      console.log(
+        "[BubbleWrap] Initializing from widgetState:",
+        widgetState.poppedBubbles
+      )
       setPoppedBubbles(new Set(widgetState.poppedBubbles))
+      setHasInitialized(true)
+    } else if (!hasInitialized && widgetState === null) {
+      // Widget state is explicitly null, start fresh
+      setHasInitialized(true)
     }
-  }, [widgetState])
+  }, [widgetState, hasInitialized])
+
+  // Sync popped bubbles from widgetState when it changes (after initialization)
+  React.useEffect(() => {
+    if (hasInitialized && widgetState?.poppedBubbles) {
+      const persistedSet = new Set(widgetState.poppedBubbles)
+      setPoppedBubbles((current) => {
+        // Only update if different to avoid unnecessary re-renders
+        if (
+          current.size !== persistedSet.size ||
+          !Array.from(current).every((idx) => persistedSet.has(idx))
+        ) {
+          console.log(
+            "[BubbleWrap] Syncing from widgetState:",
+            widgetState.poppedBubbles
+          )
+          return persistedSet
+        }
+        return current
+      })
+    }
+  }, [widgetState, hasInitialized])
 
   // Debug logging
   useEffect(() => {
@@ -109,13 +136,23 @@ export function BubbleWrap() {
     console.log("[BubbleWrap] toolOutput:", toolOutput)
     console.log("[BubbleWrap] bubbleCount:", bubbleCount)
     console.log("[BubbleWrap] widgetState:", widgetState)
-  }, [toolOutput, bubbleCount, widgetState])
+    console.log("[BubbleWrap] poppedBubbles:", Array.from(poppedBubbles))
+  }, [toolOutput, bubbleCount, widgetState, poppedBubbles])
 
   // Reset popped bubbles when bubble count changes
+  const prevBubbleCountRef = React.useRef<number | undefined>(bubbleCount)
   React.useEffect(() => {
-    setPoppedBubbles(new Set())
-    // Clear widget state when bubble count changes
-    window.openai?.setWidgetState({ poppedBubbles: [] })
+    if (
+      bubbleCount !== undefined &&
+      prevBubbleCountRef.current !== undefined &&
+      bubbleCount !== prevBubbleCountRef.current
+    ) {
+      console.log("[BubbleWrap] Bubble count changed, resetting state")
+      setPoppedBubbles(new Set())
+      // Clear widget state when bubble count changes
+      window.openai?.setWidgetState({ poppedBubbles: [] })
+    }
+    prevBubbleCountRef.current = bubbleCount
   }, [bubbleCount])
 
   const handleBubblePop = async (index: number) => {
@@ -123,8 +160,13 @@ export function BubbleWrap() {
       const newSet = new Set(prev)
       newSet.add(index)
       // Persist state to widgetState
-      const poppedArray = Array.from(newSet)
-      window.openai?.setWidgetState({ poppedBubbles: poppedArray })
+      const poppedArray = Array.from(newSet).sort((a, b) => a - b)
+      console.log("[BubbleWrap] Persisting popped bubbles:", poppedArray)
+      window.openai
+        ?.setWidgetState({ poppedBubbles: poppedArray })
+        .catch((error) => {
+          console.error("[BubbleWrap] Error persisting widget state:", error)
+        })
       return newSet
     })
   }
