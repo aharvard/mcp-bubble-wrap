@@ -51,9 +51,9 @@ export function BubbleWrap() {
 
   // Initialize audio element
   React.useEffect(() => {
-    // Audio URL - served from MCP server at /assets/audio/pop.mp3
-    // Use current origin (MCP server) or fallback to localhost:5678
-    const audioUrl = "/assets/audio/pop.mp3"
+    // Audio URL - served from MCP server
+    // BASE_URL will be injected during build
+    const audioUrl = "__BASE_URL__/assets/audio/pop.mp3"
 
     audioRef.current = new Audio(audioUrl)
     audioRef.current.preload = "auto"

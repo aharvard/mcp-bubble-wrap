@@ -154,8 +154,11 @@ for (const name of builtNames) {
     cssContent = fs.readFileSync(cssPath, "utf8")
   }
 
-  // Audio files are now served directly from the MCP server at /assets/audio/
-  // No need to embed as base64
+  // Inject BASE_URL into widget code for audio file path
+  if (jsContent) {
+    // Replace BASE_URL placeholder with actual base URL
+    jsContent = jsContent.replace(/__BASE_URL__/g, normalizedBaseUrl)
+  }
 
   const html = `<!doctype html>
 <!-- Built: ${new Date().toISOString()} -->
