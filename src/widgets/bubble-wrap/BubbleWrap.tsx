@@ -34,10 +34,15 @@ const bubbleStyles = `
   }
 `
 
+interface WidgetState {
+  poppedBubbles: number[]
+}
+
 export function BubbleWrap() {
   const toolOutput = useOpenAiGlobal(
     "toolOutput"
   ) as BubbleWrapStructuredContent
+  const widgetState = useOpenAiGlobal("widgetState") as WidgetState | null
 
   const [renderData, setRenderData] = React.useState<any>(null)
 
@@ -81,27 +86,45 @@ export function BubbleWrap() {
 
   const bubbleCount =
     toolOutput?.bubbleCount ?? renderData?.structuredContent?.bubbleCount
-  const [poppedBubbles, setPoppedBubbles] = React.useState<Set<number>>(
-    new Set()
-  )
+
+  // Initialize popped bubbles from widgetState if available
+  const [poppedBubbles, setPoppedBubbles] = React.useState<Set<number>>(() => {
+    if (widgetState?.poppedBubbles) {
+      return new Set(widgetState.poppedBubbles)
+    }
+    return new Set()
+  })
   const [columns, setColumns] = React.useState(6)
+
+  // Sync popped bubbles from widgetState when it changes
+  React.useEffect(() => {
+    if (widgetState?.poppedBubbles) {
+      setPoppedBubbles(new Set(widgetState.poppedBubbles))
+    }
+  }, [widgetState])
 
   // Debug logging
   useEffect(() => {
     console.log("[BubbleWrap] Component rendered")
     console.log("[BubbleWrap] toolOutput:", toolOutput)
     console.log("[BubbleWrap] bubbleCount:", bubbleCount)
-  }, [toolOutput, bubbleCount])
+    console.log("[BubbleWrap] widgetState:", widgetState)
+  }, [toolOutput, bubbleCount, widgetState])
 
   // Reset popped bubbles when bubble count changes
   React.useEffect(() => {
     setPoppedBubbles(new Set())
+    // Clear widget state when bubble count changes
+    window.openai?.setWidgetState({ poppedBubbles: [] })
   }, [bubbleCount])
 
-  const handleBubblePop = (index: number) => {
+  const handleBubblePop = async (index: number) => {
     setPoppedBubbles((prev) => {
       const newSet = new Set(prev)
       newSet.add(index)
+      // Persist state to widgetState
+      const poppedArray = Array.from(newSet)
+      window.openai?.setWidgetState({ poppedBubbles: poppedArray })
       return newSet
     })
   }
