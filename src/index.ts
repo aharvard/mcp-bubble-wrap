@@ -32,6 +32,10 @@ app.use(
 )
 app.use(express.json())
 
+// Serve static assets (audio files, etc.) from the assets directory
+const assetsDir = path.join(__dirname, "..", "assets")
+app.use("/assets", express.static(assetsDir, { maxAge: "1h" }))
+
 // Map to store transports by session ID, as shown in the documentation.
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {}
 

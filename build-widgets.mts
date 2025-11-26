@@ -154,29 +154,8 @@ for (const name of builtNames) {
     cssContent = fs.readFileSync(cssPath, "utf8")
   }
 
-  // Embed audio file as base64 data URL for bubble-wrap widget
-  let audioDataUrl = ""
-  if (name === "bubble-wrap") {
-    const audioPath = path.join(outPath, "audio", "pop.mp3")
-    if (fs.existsSync(audioPath)) {
-      const audioBuffer = fs.readFileSync(audioPath)
-      audioDataUrl = audioBuffer.toString("base64")
-      console.log(
-        `Embedded audio file: ${audioPath} (${Math.round(audioBuffer.length / 1024)}KB)`
-      )
-    }
-  }
-
-  // Inject audio data URL into JS if available
-  if (audioDataUrl && jsContent) {
-    // Replace the audio URL with base64 data URL
-    // Handle both minified and non-minified code
-    jsContent = jsContent.replace(
-      /"http:\/\/localhost:4444\/audio\/pop\.mp3"/g,
-      `"data:audio/mpeg;base64,${audioDataUrl}"`
-    )
-    console.log(`Injected audio data URL into ${name} widget`)
-  }
+  // Audio files are now served directly from the MCP server at /assets/audio/
+  // No need to embed as base64
 
   const html = `<!doctype html>
 <!-- Built: ${new Date().toISOString()} -->

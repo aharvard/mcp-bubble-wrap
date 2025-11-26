@@ -51,9 +51,9 @@ export function BubbleWrap() {
 
   // Initialize audio element
   React.useEffect(() => {
-    // Audio URL - will be replaced with base64 data URL during build
-    // This allows the audio to be self-contained in the widget HTML
-    const audioUrl = "http://localhost:4444/audio/pop.mp3"
+    // Audio URL - served from MCP server at /assets/audio/pop.mp3
+    // Use current origin (MCP server) or fallback to localhost:5678
+    const audioUrl = "/assets/audio/pop.mp3"
 
     audioRef.current = new Audio(audioUrl)
     audioRef.current.preload = "auto"

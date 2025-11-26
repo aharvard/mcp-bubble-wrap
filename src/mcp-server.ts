@@ -43,8 +43,9 @@ const BUBBLE_WRAP_TEMPLATE_URI = "ui://widgets/bubble-wrap"
 const RESTAURANTS_WIDGET_TEMPLATE_URI =
   `ui://widgets/restaurants-widget-${widgetHash}.html` as `ui://${string}`
 
-// Determine base URL for assets (use environment variable or default to localhost)
-const BASE_URL = process.env.BASE_URL || "http://localhost:4444"
+// Determine base URL for assets (use environment variable or default to MCP server port)
+// Audio files are served from the MCP server at /assets/audio/
+const BASE_URL = process.env.BASE_URL || "http://localhost:5678"
 
 // Widget HTML cache (loaded once on first use)
 let bubbleWrapWidgetHtml: string | null = null
@@ -138,6 +139,8 @@ export function initMcpServer(): McpServer {
         "An interactive bubble wrap simulator where you can pop virtual bubbles for stress relief",
       "openai/widgetPrefersBorder": true,
       "openai/widgetCSP": {
+        // CSP configuration per https://developers.openai.com/apps-sdk/build/mcp-server/
+        // Allow audio files to be served from the MCP server
         connect_domains: [BASE_URL],
         resource_domains: [BASE_URL],
       },
