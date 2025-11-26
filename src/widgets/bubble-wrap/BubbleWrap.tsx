@@ -108,10 +108,19 @@ export function BubbleWrap() {
 
   const handleNewBubbleWrap = async () => {
     try {
+      const bubbleCountValue = 100 // Default bubble count
       // Call the bubble_wrap tool to create a new bubble wrap
-      await window.openai?.callTool("bubble_wrap", {
-        bubbleCount: 100, // Default bubble count
+      console.log("Calling bubble_wrap tool to create a new bubble wrap")
+      const toolResponse = await window.openai?.callTool("bubble_wrap", {
+        bubbleCount: bubbleCountValue,
       })
+      console.log("Bubble wrap tool response:", { toolResponse })
+
+      // Send a follow-up message with the bubble count
+      const followUpResponse = await window.openai?.sendFollowUpMessage({
+        prompt: `Created a new bubble wrap with ${bubbleCountValue} bubbles`,
+      })
+      console.log("Follow-up message response:", { followUpResponse })
     } catch (error) {
       console.error("Error creating new bubble wrap:", error)
     }
