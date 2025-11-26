@@ -111,9 +111,17 @@ function loadWidgetHtml(widgetName: string): string {
 
 export function initMcpServer(): McpServer {
   // Create a new server instance for this specific session.
+  // MCP icons specification: https://modelcontextprotocol.io/specification/2025-11-25/basic/index#icons
   const server = new McpServer({
     name: "mcp-bubble-wrap",
     version: "1.0.0",
+    icons: [
+      {
+        src: `${BASE_URL}/assets/bubble-wrap-app-icon.svg`,
+        mimeType: "image/svg+xml",
+        sizes: ["any"], // SVG is scalable
+      },
+    ],
   })
 
   // Step 1: Register the Apps SDK template resources
