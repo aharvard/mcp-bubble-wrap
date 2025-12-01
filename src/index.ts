@@ -23,10 +23,13 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const port = process.env.PORT || 5678
 
+// Determine base URL for assets
+const BASE_URL = process.env.BASE_URL || `http://localhost:${port}`
+
 app.use(
   cors({
     origin: "*",
-    exposedHeaders: ["Mcp-Session-Id"],
+    exposedHeaders: ["Mcp-Session-Id", "Link"],
     allowedHeaders: ["Content-Type", "mcp-session-id"],
   })
 )
@@ -38,6 +41,15 @@ app.use("/assets", express.static(assetsDir, { maxAge: "1h" }))
 
 // Map to store transports by session ID, as shown in the documentation.
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {}
+
+// Add favicon Link header to all /mcp requests
+app.use("/mcp", (req, res, next) => {
+  res.setHeader(
+    "Link",
+    `<${BASE_URL}/assets/bubble-wrap-app-icon.svg>; rel="icon"`
+  )
+  next()
+})
 
 // Handle POST requests for client-to-server communication.
 app.post("/mcp", async (req, res) => {
