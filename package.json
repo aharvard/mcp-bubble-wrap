@@ -1,8 +1,8 @@
 {
-  "name": "typescript-server-demo",
+  "name": "mcp-bubble-wrap",
   "version": "0.1.0",
   "type": "module",
-  "description": "Barebones TypeScript Model Context Protocol server demo.",
+  "description": "MCP Bubble Wrap server",
   "main": "dist/index.js",
   "scripts": {
     "build": "pnpm run build:server && pnpm run build:widgets",

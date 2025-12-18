@@ -24,7 +24,7 @@ import { loadWidgetHtml } from "./utils/load-widget-html.js"
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:5678"
 
-export function initMcpServerSep1865(): McpServer {
+export function initMcpAppServer(): McpServer {
   console.log(`\n🚀 Initializing MCP server (SEP-1865 mode)`)
   console.log(`   Extension ID: ${MCP_APPS_EXTENSION_ID}`)
   console.log(`   MIME Type: ${MCP_APPS_MIME_TYPE}`)
@@ -89,50 +89,6 @@ export function initMcpServerSep1865(): McpServer {
   // Note: Tools always include UI metadata. Clients that don't support
   // MCP Apps will ignore the _meta["ui/resourceUri"] field.
   // The tool always returns meaningful text content as fallback.
-
-  server.registerTool(
-    "mcp_app_demo",
-    {
-      title: "MCP App Demo",
-      description:
-        "A demonstration tool that showcases MCP app capabilities with multiple inputs and text output.",
-      inputSchema: {
-        name: z.string().describe("Your name or identifier"),
-        message: z.string().describe("A message to include in the demo output"),
-        count: z.number().describe("A number to include in the response"),
-      },
-    },
-    async (args) => {
-      const name = (args.name as string) ?? "User"
-      const message = (args.message as string) ?? "Hello from MCP!"
-      const count = (args.count as number) ?? 0
-
-      const outputText = `MCP App Demo Results
-
-Hello, ${name}!
-
-Your message: "${message}"
-${count > 0 ? `Count value: ${count}` : ""}
-
-This is a demonstration of an MCP tool with multiple inputs and text output.
-The tool successfully processed your inputs and generated this response.`
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: outputText,
-          },
-        ],
-        structuredContent: {
-          name,
-          message,
-          count,
-        },
-      }
-    }
-  )
-
   server.registerTool(
     "bubble_wrap",
     {

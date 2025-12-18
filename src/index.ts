@@ -16,7 +16,7 @@ import {
   logStaticAssets,
 } from "./utils/logger.js"
 import { initMcpServer } from "./mcp-server.js"
-import { initMcpServerSep1865 } from "./mcp-server-sep1865.js"
+import { initMcpAppServer } from "./mcp-app-server.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -226,7 +226,7 @@ app.post("/mcp-app", async (req, res) => {
     }
 
     // Create and configure the MCP server for this session (SEP-1865 mode)
-    const server = initMcpServerSep1865()
+    const server = initMcpAppServer()
 
     // Connect the server instance to the transport for this session.
     await server.connect(transport)
