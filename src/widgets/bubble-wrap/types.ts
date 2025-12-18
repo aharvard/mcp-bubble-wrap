@@ -8,6 +8,7 @@ import { z } from "zod"
  */
 export interface BubbleWrapStructuredContent extends Record<string, unknown> {
   bubbleCount?: number
+  timestamp?: string
 }
 
 /**
@@ -16,6 +17,7 @@ export interface BubbleWrapStructuredContent extends Record<string, unknown> {
  */
 export const bubbleWrapOutputSchema = z.object({
   bubbleCount: z.number().describe("Number of bubbles created"),
+  timestamp: z.string().describe("ISO timestamp when the game was created"),
 })
 
 /**
