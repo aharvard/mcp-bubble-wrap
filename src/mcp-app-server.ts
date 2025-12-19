@@ -57,7 +57,7 @@ export function initMcpAppServer(): McpServer {
 
   server.registerResource(
     "bubble-wrap-app",
-    "ui://widgets/bubble-wrap",
+    "ui://widgets/bubble-wrap-app",
     {
       title: "Bubble Wrap App",
       description:
@@ -67,7 +67,7 @@ export function initMcpAppServer(): McpServer {
     async () => ({
       contents: [
         {
-          uri: "ui://widgets/bubble-wrap",
+          uri: "ui://widgets/bubble-wrap-app",
           mimeType: MCP_APPS_MIME_TYPE,
           text: loadWidgetHtml("bubble-wrap"),
           _meta: {
@@ -102,7 +102,7 @@ export function initMcpAppServer(): McpServer {
       },
       outputSchema: bubbleWrapOutputSchema.shape,
       _meta: {
-        "ui/resourceUri": "ui://widgets/bubble-wrap",
+        "ui/resourceUri": "ui://widgets/bubble-wrap-app",
       },
     },
     async (args) => {
