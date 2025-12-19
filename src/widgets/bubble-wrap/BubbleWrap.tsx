@@ -61,7 +61,6 @@ export function BubbleWrap() {
   }, [])
 
   useEffect(() => {
-    console.log("✨Restaurants widget rendered")
     // Request render data when ready
     const requestRenderData = async () => {
       return new Promise((resolve, reject) => {

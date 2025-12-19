@@ -16,6 +16,7 @@ import {
   logStaticAssets,
 } from "./utils/logger.js"
 import { initMcpServer } from "./mcp-server.js"
+import { initMcpAppServer } from "./mcp-app-server.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -39,8 +40,20 @@ app.use(express.json())
 const assetsDir = path.join(__dirname, "..", "assets")
 app.use("/assets", express.static(assetsDir, { maxAge: "1h" }))
 
-// Map to store transports by session ID, as shown in the documentation.
-const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {}
+// =============================================================================
+// Transport Maps - Separate maps for each endpoint
+// =============================================================================
+
+// Map to store transports by session ID for /mcp (OpenAI Apps SDK mode)
+const mcpTransports: { [sessionId: string]: StreamableHTTPServerTransport } = {}
+
+// Map to store transports by session ID for /mcp-app (SEP-1865 mode)
+const mcpAppTransports: { [sessionId: string]: StreamableHTTPServerTransport } =
+  {}
+
+// =============================================================================
+// /mcp Route - Original OpenAI Apps SDK Implementation
+// =============================================================================
 
 // Add favicon Link header to all /mcp requests
 app.use("/mcp", (req, res, next) => {
@@ -56,18 +69,20 @@ app.post("/mcp", async (req, res) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined
   let transport: StreamableHTTPServerTransport
 
-  if (sessionId && transports[sessionId]) {
+  if (sessionId && mcpTransports[sessionId]) {
     // A session already exists; reuse the existing transport.
-    console.log(chalk.gray(`♻️  Reusing transport for session: ${sessionId}`))
-    transport = transports[sessionId]
+    console.log(
+      chalk.gray(`♻️  [/mcp] Reusing transport for session: ${sessionId}`)
+    )
+    transport = mcpTransports[sessionId]
   } else if (!sessionId && isInitializeRequest(req.body)) {
     // This is a new initialization request. Create a new transport.
-    console.log(chalk.yellow("🔄 Creating new MCP session..."))
+    console.log(chalk.yellow("🔄 [/mcp] Creating new MCP session..."))
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sid) => {
-        transports[sid] = transport
-        logSessionInitialized(sid, Object.keys(transports).length)
+        mcpTransports[sid] = transport
+        logSessionInitialized(sid, Object.keys(mcpTransports).length, "/mcp")
       },
     })
 
@@ -88,13 +103,14 @@ app.post("/mcp", async (req, res) => {
       if (transport.sessionId) {
         logSessionClosed(
           transport.sessionId,
-          Object.keys(transports).length - 1
+          Object.keys(mcpTransports).length - 1,
+          "/mcp"
         )
-        delete transports[transport.sessionId]
+        delete mcpTransports[transport.sessionId]
       }
     }
 
-    // Create and configure the MCP server for this session
+    // Create and configure the MCP server for this session (OpenAI Apps SDK mode)
     const server = initMcpServer()
 
     // Connect the server instance to the transport for this session.
@@ -109,8 +125,8 @@ app.post("/mcp", async (req, res) => {
   await transport.handleRequest(req, res, req.body)
 })
 
-// A separate, reusable handler for GET and DELETE requests.
-const handleSessionRequest = async (
+// A separate, reusable handler for GET and DELETE requests on /mcp
+const handleMcpSessionRequest = async (
   req: express.Request,
   res: express.Response
 ) => {
@@ -118,29 +134,154 @@ const handleSessionRequest = async (
   const methodIcon = req.method === "GET" ? "📥" : "🗑️"
   const methodColor = req.method === "GET" ? chalk.cyan : chalk.red
 
-  if (!sessionId || !transports[sessionId]) {
+  if (!sessionId || !mcpTransports[sessionId]) {
     logSessionRequestFailed(
       req.method,
       sessionId,
-      Object.keys(transports).length
+      Object.keys(mcpTransports).length,
+      "/mcp"
     )
     return res.status(404).send("Session not found")
   }
 
   console.log(
-    methodColor(`${methodIcon} ${req.method} request for session: ${sessionId}`)
+    methodColor(
+      `${methodIcon} [/mcp] ${req.method} request for session: ${sessionId}`
+    )
   )
 
-  const transport = transports[sessionId]
+  const transport = mcpTransports[sessionId]
   await transport.handleRequest(req, res)
 }
 
 // GET handles the long-lived stream for server-to-client messages.
-app.get("/mcp", handleSessionRequest)
+app.get("/mcp", handleMcpSessionRequest)
 
 // DELETE handles explicit session termination from the client.
-app.delete("/mcp", handleSessionRequest)
+app.delete("/mcp", handleMcpSessionRequest)
+
+// =============================================================================
+// /mcp-app Route - SEP-1865 MCP Apps Implementation
+// =============================================================================
+
+// Add favicon Link header to all /mcp-app requests
+app.use("/mcp-app", (req, res, next) => {
+  res.setHeader(
+    "Link",
+    `<${BASE_URL}/assets/bubble-wrap-app-icon.svg>; rel="icon"`
+  )
+  next()
+})
+
+// Handle POST requests for client-to-server communication.
+app.post("/mcp-app", async (req, res) => {
+  const sessionId = req.headers["mcp-session-id"] as string | undefined
+  let transport: StreamableHTTPServerTransport
+
+  if (sessionId && mcpAppTransports[sessionId]) {
+    // A session already exists; reuse the existing transport.
+    console.log(
+      chalk.gray(`♻️  [/mcp-app] Reusing transport for session: ${sessionId}`)
+    )
+    transport = mcpAppTransports[sessionId]
+  } else if (!sessionId && isInitializeRequest(req.body)) {
+    // This is a new initialization request. Create a new transport.
+    console.log(
+      chalk.green("🔄 [/mcp-app] Creating new MCP session (SEP-1865 mode)...")
+    )
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (sid) => {
+        mcpAppTransports[sid] = transport
+        logSessionInitialized(
+          sid,
+          Object.keys(mcpAppTransports).length,
+          "/mcp-app"
+        )
+      },
+    })
+
+    // Log incoming messages from the client
+    transport.onmessage = (message) => {
+      logClientMessage(transport.sessionId, message, "/mcp-app")
+    }
+
+    // Wrap the transport's send method to log outgoing messages
+    const originalSend = transport.send.bind(transport)
+    transport.send = async (message, options) => {
+      logServerMessage(transport.sessionId, message, "/mcp-app")
+      return originalSend(message, options)
+    }
+
+    // Clean up the transport from our map when the session closes.
+    transport.onclose = () => {
+      if (transport.sessionId) {
+        logSessionClosed(
+          transport.sessionId,
+          Object.keys(mcpAppTransports).length - 1,
+          "/mcp-app"
+        )
+        delete mcpAppTransports[transport.sessionId]
+      }
+    }
+
+    // Create and configure the MCP server for this session (SEP-1865 mode)
+    const server = initMcpAppServer()
+
+    // Connect the server instance to the transport for this session.
+    await server.connect(transport)
+  } else {
+    return res.status(400).json({
+      error: { message: "Bad Request: No valid session ID provided" },
+    })
+  }
+
+  // Handle the client's request using the session's transport.
+  await transport.handleRequest(req, res, req.body)
+})
+
+// A separate, reusable handler for GET and DELETE requests on /mcp-app
+const handleMcpAppSessionRequest = async (
+  req: express.Request,
+  res: express.Response
+) => {
+  const sessionId = req.headers["mcp-session-id"] as string | undefined
+  const methodIcon = req.method === "GET" ? "📥" : "🗑️"
+  const methodColor = req.method === "GET" ? chalk.cyan : chalk.red
+
+  if (!sessionId || !mcpAppTransports[sessionId]) {
+    logSessionRequestFailed(
+      req.method,
+      sessionId,
+      Object.keys(mcpAppTransports).length,
+      "/mcp-app"
+    )
+    return res.status(404).send("Session not found")
+  }
+
+  console.log(
+    methodColor(
+      `${methodIcon} [/mcp-app] ${req.method} request for session: ${sessionId}`
+    )
+  )
+
+  const transport = mcpAppTransports[sessionId]
+  await transport.handleRequest(req, res)
+}
+
+// GET handles the long-lived stream for server-to-client messages.
+app.get("/mcp-app", handleMcpAppSessionRequest)
+
+// DELETE handles explicit session termination from the client.
+app.delete("/mcp-app", handleMcpAppSessionRequest)
+
+// =============================================================================
+// Start Server
+// =============================================================================
 
 app.listen(port, () => {
   logServerStarted(port)
+  console.log(chalk.blue(`\n📍 Endpoints:`))
+  console.log(chalk.gray(`   /mcp     - OpenAI Apps SDK mode (original)`))
+  console.log(chalk.green(`   /mcp-app - SEP-1865 MCP Apps mode (new)`))
 })

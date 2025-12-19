@@ -116,14 +116,18 @@ export const formatJSON = (obj: any, indent = 2): string => {
  */
 export const logClientMessage = (
   sessionId: string | undefined,
-  messageBody: any
+  messageBody: any,
+  route?: string
 ) => {
   const messageType = messageBody.method || "unknown"
   const isNewSession = !sessionId
+  const routeLabel = route ? chalk.gray(` [${route}]`) : ""
 
   const title = isNewSession
-    ? chalk.bold.white("📨 Client → Server ") + chalk.yellow("(NEW)")
-    : chalk.bold.white("📨 Client → Server")
+    ? chalk.bold.white("📨 Client → Server ") +
+      chalk.yellow("(NEW)") +
+      routeLabel
+    : chalk.bold.white("📨 Client → Server") + routeLabel
 
   logBox(
     title,
@@ -146,14 +150,16 @@ export const logClientMessage = (
  */
 export const logServerMessage = (
   sessionId: string | undefined,
-  messageBody: any
+  messageBody: any,
+  route?: string
 ) => {
   const messageType =
     messageBody.method ||
     (messageBody.result ? "result" : messageBody.error ? "error" : "unknown")
+  const routeLabel = route ? chalk.gray(` [${route}]`) : ""
 
   logBox(
-    chalk.bold.white("📤 Server → Client"),
+    chalk.bold.white("📤 Server → Client") + routeLabel,
     [
       `${chalk.blue("Session:")} ${
         sessionId ? chalk.green(sessionId) : chalk.yellow("(no session)")
@@ -173,10 +179,13 @@ export const logServerMessage = (
  */
 export const logSessionInitialized = (
   sessionId: string,
-  activeCount: number
+  activeCount: number,
+  route?: string
 ) => {
+  const routeLabel = route ? chalk.gray(` [${route}]`) : ""
+
   logBox(
-    chalk.bold.white("✨ Session Initialized"),
+    chalk.bold.white("✨ Session Initialized") + routeLabel,
     [
       `${chalk.blue("Session ID:")} ${chalk.green(sessionId)}`,
       `${chalk.blue("Active Sessions:")} ${chalk.cyan(activeCount.toString())}`,
@@ -188,9 +197,15 @@ export const logSessionInitialized = (
 /**
  * Logs session closure
  */
-export const logSessionClosed = (sessionId: string, remainingCount: number) => {
+export const logSessionClosed = (
+  sessionId: string,
+  remainingCount: number,
+  route?: string
+) => {
+  const routeLabel = route ? chalk.gray(` [${route}]`) : ""
+
   logBox(
-    chalk.bold.white("👋 Session Closed"),
+    chalk.bold.white("👋 Session Closed") + routeLabel,
     [
       `${chalk.blue("Session ID:")} ${chalk.red(sessionId)}`,
       `${chalk.blue("Remaining Sessions:")} ${chalk.cyan(
@@ -221,12 +236,14 @@ export const logToolInvocation = (toolName: string, action: string) => {
 export const logSessionRequestFailed = (
   method: string,
   sessionId: string | undefined,
-  activeCount: number
+  activeCount: number,
+  route?: string
 ) => {
   const methodIcon = method === "GET" ? "📥" : "🗑️"
+  const routeLabel = route ? chalk.gray(` [${route}]`) : ""
 
   logBox(
-    chalk.bold.white(`${methodIcon} ${method} Request Failed`),
+    chalk.bold.white(`${methodIcon} ${method} Request Failed`) + routeLabel,
     [
       `${chalk.blue("Session:")} ${
         sessionId ? chalk.red(sessionId) : chalk.red("(missing)")
