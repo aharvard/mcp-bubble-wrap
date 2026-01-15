@@ -69,6 +69,14 @@ app.post("/mcp", async (req, res) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined
   let transport: StreamableHTTPServerTransport
 
+  // Log incoming client message with headers
+  logClientMessage(
+    sessionId,
+    req.body,
+    "/mcp",
+    req.headers as Record<string, any>
+  )
+
   if (sessionId && mcpTransports[sessionId]) {
     // A session already exists; reuse the existing transport.
     console.log(
@@ -86,15 +94,15 @@ app.post("/mcp", async (req, res) => {
       },
     })
 
-    // Log incoming messages from the client
-    transport.onmessage = (message) => {
-      logClientMessage(transport.sessionId, message)
-    }
-
     // Wrap the transport's send method to log outgoing messages
     const originalSend = transport.send.bind(transport)
     transport.send = async (message, options) => {
-      logServerMessage(transport.sessionId, message)
+      const responseHeaders = {
+        "mcp-session-id": transport.sessionId,
+        "content-type": "text/event-stream",
+        link: `<${BASE_URL}/assets/bubble-wrap-app-icon.svg>; rel="icon"`,
+      }
+      logServerMessage(transport.sessionId, message, "/mcp", responseHeaders)
       return originalSend(message, options)
     }
 
@@ -178,6 +186,14 @@ app.post("/mcp-app", async (req, res) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined
   let transport: StreamableHTTPServerTransport
 
+  // Log incoming client message with headers
+  logClientMessage(
+    sessionId,
+    req.body,
+    "/mcp-app",
+    req.headers as Record<string, any>
+  )
+
   if (sessionId && mcpAppTransports[sessionId]) {
     // A session already exists; reuse the existing transport.
     console.log(
@@ -201,15 +217,20 @@ app.post("/mcp-app", async (req, res) => {
       },
     })
 
-    // Log incoming messages from the client
-    transport.onmessage = (message) => {
-      logClientMessage(transport.sessionId, message, "/mcp-app")
-    }
-
     // Wrap the transport's send method to log outgoing messages
     const originalSend = transport.send.bind(transport)
     transport.send = async (message, options) => {
-      logServerMessage(transport.sessionId, message, "/mcp-app")
+      const responseHeaders = {
+        "mcp-session-id": transport.sessionId,
+        "content-type": "text/event-stream",
+        link: `<${BASE_URL}/assets/bubble-wrap-app-icon.svg>; rel="icon"`,
+      }
+      logServerMessage(
+        transport.sessionId,
+        message,
+        "/mcp-app",
+        responseHeaders
+      )
       return originalSend(message, options)
     }
 

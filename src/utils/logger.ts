@@ -117,7 +117,8 @@ export const formatJSON = (obj: any, indent = 2): string => {
 export const logClientMessage = (
   sessionId: string | undefined,
   messageBody: any,
-  route?: string
+  route?: string,
+  headers?: Record<string, any>
 ) => {
   const messageType = messageBody.method || "unknown"
   const isNewSession = !sessionId
@@ -129,20 +130,30 @@ export const logClientMessage = (
       routeLabel
     : chalk.bold.white("📨 Client → Server") + routeLabel
 
-  logBox(
-    title,
-    [
-      `${chalk.blue("Session:")} ${
-        sessionId ? chalk.green(sessionId) : chalk.yellow("(initializing)")
-      }`,
-      `${chalk.blue("Method:")} ${chalk.magenta(messageType)}`,
-      `${chalk.blue("Payload:")}`,
-      ...formatJSON(messageBody)
+  const contentLines = [
+    `${chalk.blue("Session:")} ${
+      sessionId ? chalk.green(sessionId) : chalk.yellow("(initializing)")
+    }`,
+    `${chalk.blue("Method:")} ${chalk.magenta(messageType)}`,
+  ]
+
+  if (headers) {
+    contentLines.push(`${chalk.blue("Headers:")}`)
+    contentLines.push(
+      ...formatJSON(headers)
         .split("\n")
-        .map((line) => `  ${line}`),
-    ],
-    chalk.blue
+        .map((line) => `  ${line}`)
+    )
+  }
+
+  contentLines.push(`${chalk.blue("Payload:")}`)
+  contentLines.push(
+    ...formatJSON(messageBody)
+      .split("\n")
+      .map((line) => `  ${line}`)
   )
+
+  logBox(title, contentLines, chalk.blue)
 }
 
 /**
@@ -151,25 +162,40 @@ export const logClientMessage = (
 export const logServerMessage = (
   sessionId: string | undefined,
   messageBody: any,
-  route?: string
+  route?: string,
+  headers?: Record<string, any>
 ) => {
   const messageType =
     messageBody.method ||
     (messageBody.result ? "result" : messageBody.error ? "error" : "unknown")
   const routeLabel = route ? chalk.gray(` [${route}]`) : ""
 
+  const contentLines = [
+    `${chalk.blue("Session:")} ${
+      sessionId ? chalk.green(sessionId) : chalk.yellow("(no session)")
+    }`,
+    `${chalk.blue("Type:")} ${chalk.cyan(messageType)}`,
+  ]
+
+  if (headers) {
+    contentLines.push(`${chalk.blue("Headers:")}`)
+    contentLines.push(
+      ...formatJSON(headers)
+        .split("\n")
+        .map((line) => `  ${line}`)
+    )
+  }
+
+  contentLines.push(`${chalk.blue("Payload:")}`)
+  contentLines.push(
+    ...formatJSON(messageBody)
+      .split("\n")
+      .map((line) => `  ${line}`)
+  )
+
   logBox(
     chalk.bold.white("📤 Server → Client") + routeLabel,
-    [
-      `${chalk.blue("Session:")} ${
-        sessionId ? chalk.green(sessionId) : chalk.yellow("(no session)")
-      }`,
-      `${chalk.blue("Type:")} ${chalk.cyan(messageType)}`,
-      `${chalk.blue("Payload:")}`,
-      ...formatJSON(messageBody)
-        .split("\n")
-        .map((line) => `  ${line}`),
-    ],
+    contentLines,
     chalk.cyan
   )
 }
