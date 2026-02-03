@@ -196,6 +196,7 @@ export function initMcpServer(): McpServer {
       // Return both text content and the UI resource
       const structuredContent: BubbleWrapStructuredContent = {
         bubbleCount: validBubbleCount,
+        timestamp: new Date().toISOString(),
       }
 
       // Create MCP-UI embedded resource (without Apps SDK adapter)
