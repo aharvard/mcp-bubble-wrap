@@ -18,7 +18,7 @@ interface LayoutProps {
  *   preference, and applies it to <html> (`dark` class + `data-theme`) so the
  *   whole document, not just this subtree, follows it
  * - Exposes the current display mode on <html> as `data-display-mode`, whether
- *   the host gives us a fixed-height frame as `data-frame="fixed"`, and the
+ *   the frame is content-sized, fixed or a resizable panel as `data-frame`, and the
  *   visible height as `--bw-vh`. The stylesheet uses these to decide whether
  *   the document fills the frame and may scroll
  * - Reports size changes to mcp-ui hosts (MCP Apps hosts are handled by the
@@ -49,12 +49,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, className }) => {
     root.classList.toggle("dark", theme === "dark")
     root.dataset.theme = theme
     root.dataset.displayMode = displayMode
-    root.dataset.frame = viewport.fixed ? "fixed" : "content"
+    root.dataset.frame = viewport.frame
     root.style.setProperty(
       "--bw-vh",
       viewport.height ? `${viewport.height}px` : "100vh"
     )
-  }, [theme, displayMode, viewport.fixed, viewport.height])
+  }, [theme, displayMode, viewport.frame, viewport.height])
 
   const mcpUiContainer = useRef<HTMLDivElement>(null)
 
