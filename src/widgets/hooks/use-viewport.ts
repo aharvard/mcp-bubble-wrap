@@ -9,7 +9,10 @@
  * iframe keeps whatever height we last reported (for example the fullscreen
  * height) inside a small scrolling window. There, `window.innerHeight` is the
  * stale iframe height, not what the user sees, so we prefer the host's
- * `containerDimensions.height`.
+ * `containerDimensions`. Hosts report either a fixed `height` or, for
+ * resizable panels, a `maxHeight`; newer Goose builds report `maxHeight` for
+ * pip and split modes and stretch the iframe to at least that height, so it is
+ * the visible height either way.
  *
  * Picture-in-picture without a reported height is treated like inline: we size
  * to our content rather than lock in a stale frame height.
@@ -33,8 +36,16 @@ export function useViewport(): Viewport {
 
   let height: number | null = null
   const dims = hostContext?.containerDimensions
-  if (displayMode !== "inline" && dims && "height" in dims && dims.height > 0) {
-    height = Math.round(dims.height)
+  if (displayMode !== "inline" && dims) {
+    const reported =
+      "height" in dims
+        ? dims.height
+        : "maxHeight" in dims
+          ? dims.maxHeight
+          : undefined
+    if (typeof reported === "number" && reported > 0) {
+      height = Math.round(reported)
+    }
   }
 
   const fixed =

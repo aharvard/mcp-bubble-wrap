@@ -19,6 +19,8 @@ export const BUBBLE_GAP = 8
 const TARGET_BUBBLE = 56
 const MIN_BUBBLE = 26
 const MAX_BUBBLE = 96
+/** Larger cap when fitting a fixed frame, so small sheets fill roomy windows. */
+const FIT_MAX_BUBBLE = 132
 const MIN_COLUMNS = 3
 
 export interface BubbleLayout {
@@ -107,7 +109,7 @@ export function computeBubbleLayout(
 
   // Try every column count and keep the one giving the largest bubbles. Each
   // is limited by width (more columns = narrower) and by height (fewer
-  // columns = more rows). Ties, which happen when bubbles hit MAX_BUBBLE, go to
+  // columns = more rows). Ties, which happen when bubbles hit FIT_MAX_BUBBLE, go to
   // the fewest columns so small sheets stay a compact clump.
   let best: { columns: number; size: number } | null = null
   for (
@@ -122,7 +124,7 @@ export function computeBubbleLayout(
       : (width - gaps) / columns
     if (widthSize < MIN_BUBBLE) break
     const heightSize = (height - (rows - 1) * BUBBLE_GAP) / rows
-    const size = Math.min(MAX_BUBBLE, widthSize, heightSize)
+    const size = Math.min(FIT_MAX_BUBBLE, widthSize, heightSize)
     if (!best || size > best.size + 0.5) best = { columns, size }
   }
   if (best && best.size >= MIN_BUBBLE) {
