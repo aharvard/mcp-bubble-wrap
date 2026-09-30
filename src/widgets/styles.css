@@ -91,9 +91,14 @@ html:not([data-frame="fixed"]) body {
   overflow: hidden;
 }
 
-/* Report a token 1px rather than 0, which some hosts ignore. */
+/* The height we report in panel mode. It must stay below any panel height
+ * (Goose's smallest pip/split panel is 280px) so the host's floor, not our
+ * report, sets the frame height. It must also be a sensible frame height on
+ * its own: Goose re-applies the last reported height when returning to
+ * inline, and a sliver-sized cross-origin frame gets its rendering throttled,
+ * which delays our corrected report (the frame looked almost empty). */
 html[data-frame="panel"] {
-  min-height: 1px;
+  min-height: min(240px, var(--bw-vh, 240px));
 }
 html[data-frame="panel"] .bw-root {
   position: fixed;

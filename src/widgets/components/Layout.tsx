@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useLayoutEffect, useRef } from "react"
 import { useOpenAiGlobal } from "../hooks/use-openai-global"
 import { isOpenAiHost, useMcpApp } from "../hooks/use-mcp-app"
 import { useDisplayMode } from "../hooks/use-display-mode"
@@ -27,7 +27,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, className }) => {
   const maxHeight = useOpenAiGlobal("maxHeight")
   const safeArea = useOpenAiGlobal("safeArea")
-  const { hostContext, isConnected } = useMcpApp()
+  const { app, hostContext, isConnected } = useMcpApp()
   const { displayMode, availableDisplayModes } = useDisplayMode()
   const { theme, source: themeSource } = useTheme()
   const viewport = useViewport()
@@ -44,7 +44,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, className }) => {
     hostContext,
   })
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement
     root.classList.toggle("dark", theme === "dark")
     root.dataset.theme = theme
@@ -55,6 +55,31 @@ export const Layout: React.FC<LayoutProps> = ({ children, className }) => {
       viewport.height ? `${viewport.height}px` : "100vh"
     )
   }, [theme, displayMode, viewport.frame, viewport.height])
+
+  // Report our size to MCP Apps hosts right after every render, in addition to
+  // the SDK's auto-resize. The SDK waits for requestAnimationFrame, which
+  // Chromium throttles in tiny or hidden cross-origin frames; after a display
+  // mode switch the host may briefly size the frame that small (Goose restores
+  // the last reported height when returning to inline), and the SDK's report
+  // could then arrive late or not at all. Measured the same way as the SDK.
+  const lastReportedSize = useRef<{ width: number; height: number } | null>(
+    null
+  )
+  useLayoutEffect(() => {
+    if (!app || isOpenAiHost()) return
+    const root = document.documentElement
+    const previous = root.style.height
+    root.style.height = "max-content"
+    const height = Math.ceil(root.getBoundingClientRect().height)
+    root.style.height = previous
+    const width = Math.ceil(window.innerWidth)
+    const last = lastReportedSize.current
+    if (last && last.width === width && last.height === height) return
+    lastReportedSize.current = { width, height }
+    app.sendSizeChanged({ width, height }).catch((error: unknown) => {
+      console.warn("[Layout] size report failed:", error)
+    })
+  })
 
   const mcpUiContainer = useRef<HTMLDivElement>(null)
 
