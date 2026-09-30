@@ -8,6 +8,7 @@
     "build": "pnpm run build:server && pnpm run build:widgets",
     "build:server": "tsc",
     "build:widgets": "tsx ./build-widgets.mts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.widgets.json",
     "start": "node dist/index.js",
     "dev": "concurrently \"pnpm build:widgets\" \"pnpm dev:server\" \"pnpm inspect:dev\"",
     "dev:server": "vite-node src/index.ts",
@@ -26,9 +27,16 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
-    "@mcp-ui/server": "^5.2.0",
-    "@modelcontextprotocol/sdk": "^1.18.2",
+    "@mcp-ui/server": "^6.1.0",
+    "@modelcontextprotocol/client": "^2.0.0",
+    "@modelcontextprotocol/core": "^2.1.0",
+    "@modelcontextprotocol/ext-apps": "^2.0.0",
+    "@modelcontextprotocol/node": "^2.1.0",
+    "@modelcontextprotocol/server": "^2.1.0",
     "chalk": "^5.6.2",
     "cors": "^2.8.5",
     "express": "^5.0.1",
@@ -37,7 +45,7 @@
     "react-dom": "^19.1.1",
     "string-width": "^8.1.0",
     "strip-ansi": "^7.1.2",
-    "zod": "3"
+    "zod": "^4.2.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

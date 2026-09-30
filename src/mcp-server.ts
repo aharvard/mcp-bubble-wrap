@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { McpServer } from "@modelcontextprotocol/server"
 import { createUIResource } from "@mcp-ui/server"
 import { z } from "zod"
 import { readFileSync } from "fs"
@@ -220,7 +220,7 @@ export function initMcpServer(): McpServer {
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: `Created a bubble wrap simulator with ${validBubbleCount} bubbles. Click to pop them all!`,
           },
           uiResource,

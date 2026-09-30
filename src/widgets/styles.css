@@ -2,6 +2,394 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+ * Theme tokens. `Layout` resolves the theme from the host (ChatGPT globals or
+ * the MCP Apps host context) and toggles the `dark` class on <html>.
+ * ------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  /* Breathing room around the whole board: ~44px on roomy viewports, easing
+   * down to 24px in small ones like picture-in-picture. */
+  --bw-pad: clamp(24px, 5vw, 44px);
+  --bw-bg: #e0e0e0;
+  --bw-text: #111111;
+  --bw-muted: #4b5563;
+  --bw-bubble-hi: #f0f0f0;
+  --bw-bubble-lo: #cacaca;
+  --bw-shadow-dark: #b3b3b3;
+  --bw-shadow-light: #ffffff;
+  --bw-popped-shadow-dark: #cecece;
+  --bw-popped-shadow-light: #f2f2f2;
+  --bw-highlight: rgb(255 255 255 / 96%);
+  --bw-control-bg: rgb(255 255 255 / 0.65);
+  --bw-control-bg-hover: #ffffff;
+  --bw-control-fg: #374151;
+  --bw-control-border: rgb(0 0 0 / 0.12);
+  --bw-accent-bg: #111111;
+  --bw-accent-bg-hover: #333333;
+  --bw-accent-fg: #ffffff;
+  --bw-chip-bg: rgb(0 0 0 / 0.05);
+}
+
+html.dark {
+  color-scheme: dark;
+  --bw-bg: #0e0e11;
+  --bw-text: #f3f4f6;
+  --bw-muted: #9ca3af;
+  /* Translucent tints so the page's near-black shows through the dome and the
+   * bubble reads as glass over darkness rather than an opaque grey disc. */
+  --bw-bubble-hi: rgb(255 255 255 / 0.14);
+  --bw-bubble-lo: rgb(0 0 0 / 0.6);
+  --bw-shadow-dark: rgb(0 0 0 / 0.85);
+  --bw-shadow-light: rgb(255 255 255 / 0.05);
+  --bw-popped-shadow-dark: rgb(0 0 0 / 0.6);
+  --bw-popped-shadow-light: rgb(255 255 255 / 0.03);
+  --bw-highlight: rgb(255 255 255 / 55%);
+  --bw-control-bg: rgb(30 30 36 / 0.85);
+  --bw-control-bg-hover: #2c2c34;
+  --bw-control-fg: #e5e7eb;
+  --bw-control-border: rgb(255 255 255 / 0.14);
+  --bw-accent-bg: #f3f4f6;
+  --bw-accent-bg-hover: #ffffff;
+  --bw-accent-fg: #111111;
+  --bw-chip-bg: rgb(255 255 255 / 0.06);
+}
+
+html,
 body {
+  margin: 0;
+  padding: 0;
+  background: var(--bw-bg);
+  color: var(--bw-text);
+}
+/* Only fill the frame when the host gives us a fixed one. In inline mode the
+ * host sizes the frame from our reported content height, so a 100% minimum
+ * would make the document at least as tall as the frame already is: after a
+ * trip to fullscreen, inline could never shrink back. */
+html:not([data-display-mode="inline"]),
+html:not([data-display-mode="inline"]) body {
+  min-height: 100%;
+}
+
+/* Inline: the host sizes the iframe to our content (ext-apps autoResize), so a
+ * scrollbar would only ever flicker. Every other mode hands us a fixed
+ * viewport, so we must be allowed to scroll it ourselves. */
+html[data-display-mode="inline"],
+html[data-display-mode="inline"] body {
   overflow: hidden;
+}
+html:not([data-display-mode="inline"]) body {
+  overflow: auto;
+}
+
+/* Fill the viewport only when the host gives us a fixed one. In inline mode the
+ * iframe tracks our content height, so a 100vh minimum would just lock in
+ * whatever height the host started with. */
+html:not([data-display-mode="inline"]) .bw-fill {
+  min-height: 100vh;
+}
+/* Inline, a small sheet can be shorter than the completion overlay; give the
+ * board enough height while the overlay is showing. */
+html[data-display-mode="inline"] .bw-fill.bw-fill-complete {
+  min-height: 340px;
+}
+
+.bw-muted {
+  color: var(--bw-muted);
+}
+.bw-strong {
+  color: var(--bw-text);
+}
+
+.bw-accent-button {
+  background: var(--bw-accent-bg);
+  color: var(--bw-accent-fg);
+}
+.bw-accent-button:hover {
+  background: var(--bw-accent-bg-hover);
+}
+
+.bw-control-button {
+  background: var(--bw-control-bg);
+  color: var(--bw-control-fg);
+  border: 1px solid var(--bw-control-border);
+  backdrop-filter: blur(6px);
+}
+.bw-control-button:hover {
+  background: var(--bw-control-bg-hover);
+}
+
+/* Bubble highlight / popped dimple */
+.bubble-button {
+  position: relative;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--bw-bubble-hi), var(--bw-bubble-lo));
+  box-shadow:
+    12px 12px 24px var(--bw-shadow-dark),
+    -12px -12px 24px var(--bw-shadow-light);
+}
+.bubble-button.popped {
+  background: linear-gradient(145deg, var(--bw-bubble-lo), var(--bw-bubble-hi));
+  box-shadow:
+    6px 6px 12px var(--bw-popped-shadow-dark),
+    -6px -6px 12px var(--bw-popped-shadow-light);
+}
+.bubble-button::after {
+  content: "";
+  position: absolute;
+  top: 3%;
+  left: 3%;
+  width: 90%;
+  height: 90%;
+  background: radial-gradient(
+    circle at 24% 22%,
+    var(--bw-highlight) 7%,
+    rgb(170 170 170 / 7%) 68%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  pointer-events: none;
+}
+.bubble-button.popped::after {
+  top: 10%;
+  left: 10%;
+  background: radial-gradient(
+    circle at 58% 63%,
+    rgb(201 201 213 / 70%),
+    rgb(255 255 255 / 11%) 93%,
+    transparent 36%
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode bubbles: thin plastic over darkness. The disc stays near-black, but
+ * a gentle off-centre lift and a darker rim suggest curvature, a soft outer
+ * shadow grounds it (ambient occlusion at the base), and a broad, faint sheen
+ * on the upper-left reads as a plastic skin catching ambient light. No hard
+ * specular, nothing glowing inside.
+ * ------------------------------------------------------------------------- */
+html.dark .bubble-button {
+  background:
+    radial-gradient(
+      circle at 38% 32%,
+      rgb(255 255 255 / 0.1) 0%,
+      rgb(255 255 255 / 0.045) 28%,
+      rgb(255 255 255 / 0) 52%,
+      rgb(0 0 0 / 0.35) 78%,
+      rgb(0 0 0 / 0.6) 100%
+    ),
+    #0c0c10;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.06),
+    inset 1px 1px 1px rgb(255 255 255 / 0.08),
+    inset -4px -5px 10px rgb(0 0 0 / 0.65),
+    0 3px 7px rgb(0 0 0 / 0.7),
+    0 0 2px rgb(0 0 0 / 0.9);
+}
+html.dark .bubble-button::after {
+  top: 5%;
+  left: 5%;
+  width: 72%;
+  height: 72%;
+  background: radial-gradient(
+    ellipse at 36% 30%,
+    rgb(255 255 255 / 0.13) 0%,
+    rgb(255 255 255 / 0.05) 38%,
+    transparent 68%
+  );
+}
+html.dark .bubble-button.popped {
+  /* A whisper of light so flattened bubbles stay distinguishable from the
+   * near-black page. Full opacity here (overrides the popped `opacity-60`),
+   * since the fill itself is already very faint. */
+  opacity: 1;
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      rgb(255 255 255 / 0.03) 0%,
+      rgb(255 255 255 / 0.065) 100%
+    ),
+    #111116;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.08),
+    inset 2px 3px 6px rgb(0 0 0 / 0.55);
+}
+html.dark .bubble-button.popped::after {
+  content: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Inflate on load. Each bubble gets an inline animation-delay so the sheet
+ * fills in reading order. Animates the standalone `scale` property so it
+ * composes with the odd-row `transform: translateX(50%)` offset. Fill mode is
+ * `backwards` only: bubbles stay hidden until their turn, and once the
+ * animation ends it stops overriding anything (e.g. popped opacity).
+ * ------------------------------------------------------------------------- */
+@keyframes bw-inflate {
+  0% {
+    scale: 0.2;
+    opacity: 0;
+  }
+  55% {
+    scale: 1.08;
+    opacity: 1;
+  }
+  78% {
+    scale: 0.97;
+  }
+  100% {
+    scale: 1;
+  }
+}
+.bubble-button.bw-inflate {
+  animation: bw-inflate 420ms cubic-bezier(0.22, 0.8, 0.32, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble-button.bw-inflate {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Completion overlay. Everything on the board (header, grid, mode controls)
+ * gets `bw-blurred`; the overlay content sits directly on top, no card.
+ * Blur is applied per element rather than to a wrapper because a filter on an
+ * ancestor would re-anchor the fixed-position controls to that ancestor.
+ * ------------------------------------------------------------------------- */
+.bw-blurrable {
+  transition:
+    filter 320ms ease-out,
+    opacity 320ms ease-out;
+}
+.bw-blurred {
+  filter: blur(8px);
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+}
+.bw-complete-headline span {
+  display: inline-block;
+  animation: bw-letter 620ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+.bw-complete-stat {
+  background: var(--bw-chip-bg);
+  animation: bw-rise 380ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.bw-complete-form {
+  animation: bw-rise 380ms cubic-bezier(0.2, 1.4, 0.4, 1) 520ms both;
+}
+/* Bubble-count stepper */
+.bw-stepper {
+  background: var(--bw-chip-bg);
+  border: 1px solid var(--bw-control-border);
+  transition: border-color 160ms;
+}
+.bw-stepper:focus-within {
+  border-color: var(--bw-muted);
+}
+.bw-stepper-invalid {
+  border-color: #dc2626;
+}
+.bw-stepper-button {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: var(--bw-control-bg);
+  color: var(--bw-text);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.12),
+    inset 0 0 0 1px var(--bw-control-border);
+  touch-action: manipulation;
+  user-select: none;
+  transition:
+    transform 140ms cubic-bezier(0.2, 1.6, 0.4, 1),
+    background 140ms,
+    opacity 140ms;
+}
+.bw-stepper-button svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.bw-stepper-button:hover:not(:disabled) {
+  background: var(--bw-control-bg-hover);
+  transform: scale(1.08);
+}
+.bw-stepper-button:active:not(:disabled) {
+  transform: scale(0.88);
+}
+.bw-stepper-button:focus-visible {
+  outline: 2px solid var(--bw-text);
+  outline-offset: 2px;
+}
+.bw-stepper-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.bw-stepper-value {
+  width: 3.5rem;
+  background: transparent;
+  border: 0;
+  outline: none;
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--bw-text);
+}
+.bw-complete-button {
+  transition:
+    transform 160ms cubic-bezier(0.2, 1.6, 0.4, 1),
+    background 160ms;
+}
+.bw-complete-button:hover:not(:disabled) {
+  transform: scale(1.05) rotate(-1.5deg);
+}
+.bw-complete-button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.bw-complete-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes bw-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes bw-letter {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.6) rotate(-8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bw-blurrable {
+    transition: none;
+  }
+  .bw-complete-headline span,
+  .bw-complete-stat,
+  .bw-complete-form {
+    animation: none;
+  }
+  .bw-complete-button:hover:not(:disabled),
+  .bw-stepper-button:hover:not(:disabled),
+  .bw-stepper-button:active:not(:disabled) {
+    transform: none;
+  }
 }

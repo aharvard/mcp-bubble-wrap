@@ -1,3 +1,5 @@
+import type { SpecDisplayMode } from "../../shared/display-modes"
+
 export type OpenAiGlobals<
   ToolInput = UnknownObject,
   ToolOutput = UnknownObject,
@@ -59,8 +61,8 @@ export type UserAgent = {
   }
 }
 
-/** Display mode */
-export type DisplayMode = "pip" | "inline" | "fullscreen"
+/** Display mode (ChatGPT supports the three spec modes only) */
+export type DisplayMode = SpecDisplayMode
 export type RequestDisplayMode = (args: { mode: DisplayMode }) => Promise<{
   /**
    * The granted display mode. The host may reject the request.

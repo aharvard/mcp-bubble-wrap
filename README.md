@@ -11,26 +11,35 @@ A sophisticated MCP (Model Context Protocol) server with React-based interactive
 - 🔄 **Hot Module Replacement**: Fast development with instant updates
 - 📦 **Optimized Builds**: Inlined assets for easy deployment
 - 🌐 **Apps SDK Compatible**: Works seamlessly with ChatGPT and OpenAI Apps SDK
+- 🧩 **MCP Apps (SEP-1865)**: Native support for MCP Apps hosts such as Goose via `@modelcontextprotocol/ext-apps`
+- 🪟 **Display modes**: Declares inline, fullscreen, pip, plus Goose's split-right, split-bottom and standalone
 
 ## Project Structure
 
 ```
 mcp-bubble-wrap/
 ├── src/
+│   ├── shared/
+│   │   └── display-modes.ts    # Display modes shared by server + widgets
 │   ├── widgets/                # React-based widgets
 │   │   ├── styles.css          # Shared Tailwind styles
 │   │   ├── components/         # Shared widget components
+│   │   │   ├── DisplayModeControls.tsx
 │   │   │   └── Layout.tsx
 │   │   ├── hooks/              # Shared hooks
 │   │   │   ├── types.ts
-│   │   │   └── use-openai-global.ts
+│   │   │   ├── use-display-mode.ts   # Host-agnostic display mode state
+│   │   │   ├── use-mcp-app.ts        # MCP Apps (ext-apps) connection
+│   │   │   └── use-openai-global.ts  # ChatGPT (OpenAI Apps SDK) globals
 │   │   └── bubble-wrap/
 │   │       ├── BubbleWrap.tsx  # Widget component
 │   │       ├── index.tsx       # Widget entry point
 │   │       └── types.ts        # Widget types
 │   ├── utils/                  # Shared utilities
+│   │   ├── load-widget-html.ts
 │   │   └── logger.ts
-│   ├── mcp-server.ts           # MCP server implementation
+│   ├── mcp-server.ts           # /mcp route: OpenAI Apps SDK + mcp-ui
+│   ├── mcp-app-server.ts       # /mcp-app route: MCP Apps (SEP-1865)
 │   └── index.ts                # Server entry point
 ├── build-widgets.mts           # Widget build orchestrator
 ├── assets/                     # Built widget assets (generated)
@@ -42,6 +51,8 @@ mcp-bubble-wrap/
 ```
 
 ## Setup
+
+Requires **Node.js 20+** (the MCP TypeScript SDK v2 packages need it). An `.nvmrc` is included.
 
 ```bash
 pnpm install
@@ -71,6 +82,9 @@ pnpm dev:widgets
 
 # Build widgets
 pnpm build:widgets
+
+# Type-check server and widgets
+pnpm typecheck
 
 # Build server
 pnpm build:server
@@ -221,11 +235,67 @@ The build system is inspired by the OpenAI Apps SDK examples:
 
 ### MCP Server Integration
 
-The MCP server loads and serves the built widget HTML:
+The server exposes the same widget on two Streamable HTTP routes:
 
-1. Widget HTML is read from the `assets/` directory
-2. Passed to the Apps SDK via `createUIResource`
-3. Rendered inline in ChatGPT or other Apps SDK clients
+| Route      | Protocol                                               | Typical host                |
+| ---------- | ------------------------------------------------------ | --------------------------- |
+| `/mcp`     | OpenAI Apps SDK + mcp-ui (`@mcp-ui/server`)            | ChatGPT                     |
+| `/mcp-app` | MCP Apps / SEP-1865 (`@modelcontextprotocol/ext-apps`) | Goose, other MCP Apps hosts |
+
+Both routes load the built widget HTML from `assets/`. The `/mcp-app` route
+registers the UI resource and tool with `registerAppResource` /
+`registerAppTool` from the ext-apps server helpers, which emit the
+`text/html;profile=mcp-app` MIME type and `_meta.ui` metadata for you.
+
+### Display Modes
+
+The widget declares every display mode it can render in through the MCP Apps
+`ui/initialize` handshake (`appCapabilities.availableDisplayModes`). The list
+lives in `src/shared/display-modes.ts`:
+
+| Mode           | Source          |
+| -------------- | --------------- |
+| `inline`       | MCP Apps spec   |
+| `fullscreen`   | MCP Apps spec   |
+| `pip`          | MCP Apps spec   |
+| `split-right`  | Goose extension |
+| `split-bottom` | Goose extension |
+| `standalone`   | Goose extension |
+
+The three Goose modes are not part of the MCP Apps spec; Goose accepts them
+and other hosts ignore them. At runtime the widget renders one control per
+mode the host actually offers (`DisplayModeControls`), so the split-right /
+split-bottom buttons only appear under a host that advertises them. The
+controls are fixed to the bottom of the viewport so they stay reachable when
+the grid is taller than the viewport. In ChatGPT the controls fall back to
+`window.openai.requestDisplayMode` with the three spec modes.
+
+**Non-spec modes and the ext-apps SDK.** The `App` class in
+`@modelcontextprotocol/ext-apps` validates every host message against the spec
+schemas, whose display-mode enum is exactly `inline | fullscreen | pip`. A host
+that puts `split-right` in `hostContext.availableDisplayModes` would otherwise
+make `App.connect()` reject the whole `ui/initialize` result.
+`src/widgets/lib/display-mode-compat-transport.ts` wraps the
+`PostMessageTransport`, records the real values the host sent, and hands the
+SDK a spec-conformant copy. `useDisplayMode()` reads the real values from that
+side channel and falls back to `hostContext` for spec-only hosts.
+
+### Theme and Layout
+
+- **Theme** comes from the host (`window.openai.theme` in ChatGPT,
+  `hostContext.theme` in MCP Apps hosts, updated via
+  `ui/notifications/host-context-changed`) and falls back to
+  `prefers-color-scheme`. `Layout` applies it to `<html>` as the `dark` class
+  plus `data-theme`; colours are CSS variables in `src/widgets/styles.css`.
+- **Scrolling** is disabled only in `inline` mode, where the host sizes the
+  iframe to the content. Every other mode gives the app a fixed viewport, so
+  the document scrolls normally there.
+- **Grid sizing** (`useBubbleLayout`) derives the column count and bubble size
+  from the measured container width. Outside `inline` mode it also tries to
+  pick the largest bubble size at which every bubble fits the viewport height,
+  so fullscreen and split modes usually need no scrolling at all.
+- The resource sets `prefersBorder: false` and the app paints a full-bleed
+  background, so the host draws no frame around it.
 
 ### Props Communication
 
@@ -275,8 +345,10 @@ pnpm run build
 ### Runtime
 
 - `react` & `react-dom`: UI framework
-- `@mcp-ui/server`: MCP UI resource creation
-- `@modelcontextprotocol/sdk`: MCP server SDK
+- `@modelcontextprotocol/server` / `@modelcontextprotocol/node`: MCP TypeScript SDK v2 (server + Node Streamable HTTP transport)
+- `@modelcontextprotocol/ext-apps`: MCP Apps (SEP-1865) server helpers and the widget-side `App` client
+- `@modelcontextprotocol/client` / `@modelcontextprotocol/core`: peer packages required by ext-apps in the widget bundle
+- `@mcp-ui/server`: mcp-ui resource creation with the OpenAI Apps SDK adapter (used by the `/mcp` route)
 - `express`: HTTP server for MCP protocol
 - `cors`: CORS middleware
 - `zod`: Schema validation

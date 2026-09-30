@@ -1,53 +1,74 @@
 import React, { useEffect } from "react"
 import { Layout } from "../components/Layout.js"
+import { DisplayModeControls } from "../components/DisplayModeControls.js"
+import {
+  PopParticles,
+  type PopParticlesHandle,
+} from "../components/PopParticles.js"
 import { useOpenAiGlobal } from "../hooks/use-openai-global.js"
+import { isOpenAiHost, useMcpApp } from "../hooks/use-mcp-app.js"
+import { useDisplayMode } from "../hooks/use-display-mode.js"
+import {
+  BUBBLE_GAP,
+  gridHeight,
+  needsHalfStep,
+  useBubbleLayout,
+} from "../hooks/use-bubble-layout.js"
+import { playInflateSequence } from "../lib/inflate-sound.js"
+import { CompletionCard } from "../components/CompletionCard.js"
 import type { BubbleWrapStructuredContent } from "./types.js"
 
-// Add styles for pseudo-element
-const bubbleStyles = `
-  .bubble-button {
-    position: relative;
-  }
-  .bubble-button::after {
-    content: '';
-    position: absolute;
-    top: 3%;
-    left: 3%;
-    width: 90%;
-    height: 90%;
-    background: radial-gradient(circle at 24% 22%, rgb(255 255 255 / 96%) 7%, rgb(170 170 170 / 7%) 68%, transparent 100%);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 100;
-  }
-  .bubble-button.popped::after {
-    content: '';
-    position: absolute;
-    top: 10%;
-    left: 10%;
-    width: 90%;
-    height: 90%;
-    background: radial-gradient(circle at 58% 63%, rgb(201 201 213 / 70%), rgb(255 255 255 / 11%) 93%, transparent 36%);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 100;
-  }
-`
+/** Vertical space kept clear under the grid for the fixed display-mode controls. */
+const CONTROLS_RESERVE = 72
+
+/**
+ * Inflate-on-load stagger. Bubbles inflate one after another in reading order
+ * (left to right, row by row). The per-bubble step shrinks for big sheets so
+ * the whole fill never takes much longer than INFLATE_TOTAL_MS.
+ */
+const INFLATE_STEP_MAX_MS = 18
+const INFLATE_TOTAL_MS = 1600
+/** When in each bubble's inflate animation its sound lands (mid-growth). */
+const INFLATE_SOUND_LEAD_MS = 110
+
+function inflateStepMs(count: number) {
+  return Math.min(INFLATE_STEP_MAX_MS, INFLATE_TOTAL_MS / count)
+}
 
 interface WidgetState {
   poppedBubbles: number[]
 }
 
 export function BubbleWrap() {
-  const toolOutput = useOpenAiGlobal(
+  // ChatGPT (OpenAI Apps SDK) host
+  const openAiToolOutput = useOpenAiGlobal(
     "toolOutput"
-  ) as BubbleWrapStructuredContent
+  ) as BubbleWrapStructuredContent | null
   const widgetState = useOpenAiGlobal("widgetState") as WidgetState | null
+
+  // MCP Apps host (Goose, etc.) via the ext-apps SDK
+  const mcpApp = useMcpApp()
+  const mcpToolOutput = (mcpApp.toolResult?.structuredContent ??
+    null) as BubbleWrapStructuredContent | null
+  const mcpToolInput = mcpApp.toolInput as { bubbleCount?: number } | null
+
+  // A sheet created by the app itself in ChatGPT, where callTool() doesn't
+  // necessarily update window.openai.toolOutput. Cleared as soon as the host
+  // delivers a newer tool output of its own.
+  const [localSheet, setLocalSheet] =
+    React.useState<BubbleWrapStructuredContent | null>(null)
+  React.useEffect(() => {
+    setLocalSheet(null)
+  }, [openAiToolOutput?.timestamp])
+
+  const toolOutput = localSheet ?? openAiToolOutput ?? mcpToolOutput
 
   const [renderData, setRenderData] = React.useState<any>(null)
 
   // Audio element for pop sound
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
+  // Space-dust burst layer
+  const particlesRef = React.useRef<PopParticlesHandle>(null)
 
   // Initialize audio element
   React.useEffect(() => {
@@ -97,14 +118,17 @@ export function BubbleWrap() {
       })
   }, [])
 
-  const bubbleCount =
-    toolOutput?.bubbleCount ?? renderData?.structuredContent?.bubbleCount
+  const bubbleCount: number | undefined =
+    toolOutput?.bubbleCount ??
+    // While the MCP Apps tool call is still running we already know the input
+    mcpToolInput?.bubbleCount ??
+    // mcp-ui hosts (the /mcp route without ChatGPT) deliver initial render data
+    renderData?.structuredContent?.bubbleCount
 
   // Initialize popped bubbles from widgetState if available
   const [poppedBubbles, setPoppedBubbles] = React.useState<Set<number>>(
     new Set()
   )
-  const [columns, setColumns] = React.useState(6)
   const [hasInitialized, setHasInitialized] = React.useState(false)
 
   // Initialize from widgetState when it becomes available
@@ -152,23 +176,72 @@ export function BubbleWrap() {
     console.log("[BubbleWrap] poppedBubbles:", Array.from(poppedBubbles))
   }, [toolOutput, bubbleCount, widgetState, poppedBubbles])
 
-  // Reset popped bubbles when bubble count changes
-  const prevBubbleCountRef = React.useRef<number | undefined>(bubbleCount)
+  // A fresh sheet arrives when the bubble count changes or when the tool is
+  // called again (new timestamp, possibly with the same count). Either way,
+  // reset the popped state and bump the sheet generation so the grid remounts
+  // and the inflate animation plays again.
+  const [sheetGeneration, setSheetGeneration] = React.useState(0)
+  // Timing for the completion card: first pop to last pop on this sheet.
+  const firstPopAtRef = React.useRef<number | null>(null)
+  const [elapsedMs, setElapsedMs] = React.useState<number | null>(null)
+  const sheetTimestamp = toolOutput?.timestamp
+  const prevSheetRef = React.useRef({ bubbleCount, sheetTimestamp })
   React.useEffect(() => {
-    if (
+    const prev = prevSheetRef.current
+    const countChanged =
       bubbleCount !== undefined &&
-      prevBubbleCountRef.current !== undefined &&
-      bubbleCount !== prevBubbleCountRef.current
-    ) {
-      console.log("[BubbleWrap] Bubble count changed, resetting state")
+      prev.bubbleCount !== undefined &&
+      bubbleCount !== prev.bubbleCount
+    const timestampChanged =
+      sheetTimestamp !== undefined &&
+      prev.sheetTimestamp !== undefined &&
+      sheetTimestamp !== prev.sheetTimestamp
+    if (countChanged || timestampChanged) {
+      console.log("[BubbleWrap] New bubble sheet, resetting state")
+      firstPopAtRef.current = null
+      setElapsedMs(null)
       setPoppedBubbles(new Set())
-      // Clear widget state when bubble count changes
+      setSheetGeneration((g) => g + 1)
       window.openai?.setWidgetState({ poppedBubbles: [] })
     }
-    prevBubbleCountRef.current = bubbleCount
-  }, [bubbleCount])
+    prevSheetRef.current = { bubbleCount, sheetTimestamp }
+  }, [bubbleCount, sheetTimestamp])
 
-  const handleBubblePop = async (index: number) => {
+  // Inflate sound, in step with the grid's inflate animation. The grid
+  // remounts (and the animation restarts) whenever sheetGeneration changes, so
+  // the sound follows the same trigger.
+  const bubbleCountRef = React.useRef(bubbleCount)
+  bubbleCountRef.current = bubbleCount
+  const hasSheet = Boolean(bubbleCount)
+  React.useEffect(() => {
+    const count = bubbleCountRef.current
+    if (!count) return
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return
+    const sequence = playInflateSequence({
+      count,
+      stepMs: inflateStepMs(count),
+      leadMs: INFLATE_SOUND_LEAD_MS,
+    })
+    return () => sequence.stop()
+  }, [sheetGeneration, hasSheet])
+
+  const handleBubblePop = async (index: number, target?: HTMLElement) => {
+    const now = performance.now()
+    if (firstPopAtRef.current === null) firstPopAtRef.current = now
+    if (bubbleCount && poppedBubbles.size + 1 === bubbleCount) {
+      setElapsedMs(now - firstPopAtRef.current)
+    }
+
+    // Space dust from the bubble's centre (viewport coordinates; the canvas is fixed)
+    if (target) {
+      const rect = target.getBoundingClientRect()
+      particlesRef.current?.burst(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+        rect.width / 2
+      )
+    }
+
     // Play pop sound
     if (audioRef.current) {
       try {
@@ -195,41 +268,74 @@ export function BubbleWrap() {
     })
   }
 
-  const handleNewBubbleWrap = async () => {
-    try {
-      const bubbleCountValue = 100 // Default bubble count
-      // Call the bubble_wrap tool to create a new bubble wrap
-      console.log("Calling bubble_wrap tool to create a new bubble wrap")
-      const toolResponse = await window.openai?.callTool("bubble_wrap", {
-        bubbleCount: bubbleCountValue,
-      })
-      console.log("Bubble wrap tool response:", { toolResponse })
+  const [creatingSheet, setCreatingSheet] = React.useState(false)
 
-      // Send a follow-up message with the bubble count
-      const followUpResponse = await window.openai?.sendFollowUpMessage({
-        prompt: `Created a new bubble wrap with ${bubbleCountValue} bubbles`,
+  // Fetch a fresh sheet from the server. Deliberately does not post anything
+  // into the conversation: starting a new sheet is a UI-only action.
+  const handleNewBubbleWrap = async (bubbleCountValue: number) => {
+    setCreatingSheet(true)
+    try {
+      if (isOpenAiHost()) {
+        const response = (await window.openai.callTool("bubble_wrap", {
+          bubbleCount: bubbleCountValue,
+        })) as unknown as { structuredContent?: BubbleWrapStructuredContent }
+        console.log("Bubble wrap tool response:", response)
+        const fresh = response?.structuredContent
+        setLocalSheet(
+          fresh?.bubbleCount
+            ? fresh
+            : {
+                bubbleCount: bubbleCountValue,
+                timestamp: new Date().toISOString(),
+              }
+        )
+        return
+      }
+
+      if (!mcpApp.app) {
+        console.warn("No host connection available to call bubble_wrap")
+        return
+      }
+
+      const result = await mcpApp.app.callServerTool({
+        name: "bubble_wrap",
+        arguments: { bubbleCount: bubbleCountValue },
       })
-      console.log("Follow-up message response:", { followUpResponse })
+      console.log("Bubble wrap tool response:", { result })
+      // The host may not re-render for app-initiated calls, so apply it here.
+      mcpApp.setToolResult(result)
     } catch (error) {
       console.error("Error creating new bubble wrap:", error)
+    } finally {
+      setCreatingSheet(false)
     }
   }
 
-  const handleFullscreen = async () => {
-    try {
-      await window.openai?.requestDisplayMode({ mode: "fullscreen" })
-    } catch (error) {
-      console.error("Error requesting fullscreen:", error)
+  // Finale: a ring of space-dust puffs around the completion card.
+  const isComplete = Boolean(bubbleCount) && poppedBubbles.size === bubbleCount
+  React.useEffect(() => {
+    if (!isComplete) return
+    const timers: number[] = []
+    const cx = window.innerWidth / 2
+    const cy = window.innerHeight / 2
+    const spread = Math.min(window.innerWidth, window.innerHeight) * 0.32
+    const puffs = 7
+    for (let i = 0; i < puffs; i++) {
+      const angle = (i / puffs) * Math.PI * 2 - Math.PI / 2
+      timers.push(
+        window.setTimeout(
+          () =>
+            particlesRef.current?.burst(
+              cx + Math.cos(angle) * spread * 1.2,
+              cy + Math.sin(angle) * spread,
+              22
+            ),
+          180 + i * 70
+        )
+      )
     }
-  }
-
-  const handlePictureInPicture = async () => {
-    try {
-      await window.openai?.requestDisplayMode({ mode: "pip" })
-    } catch (error) {
-      console.error("Error requesting picture-in-picture:", error)
-    }
-  }
+    return () => timers.forEach((t) => window.clearTimeout(t))
+  }, [isComplete])
 
   useEffect(() => {
     window.parent.postMessage(
@@ -245,176 +351,131 @@ export function BubbleWrap() {
     )
   }, [bubbleCount])
 
-  // Update columns based on window size (matching Tailwind breakpoints)
-  React.useEffect(() => {
-    const updateColumns = () => {
-      const width = window.innerWidth
-      if (width >= 1024) {
-        // lg breakpoint
-        setColumns(12)
-      } else if (width >= 768) {
-        // md breakpoint
-        setColumns(10)
-      } else if (width >= 640) {
-        // sm breakpoint
-        setColumns(8)
-      } else {
-        setColumns(6)
-      }
-    }
+  // Size the grid to the container (and, outside inline mode, to the viewport)
+  const { displayMode } = useDisplayMode()
+  const gridContainerRef = React.useRef<HTMLDivElement>(null)
+  const headerRef = React.useRef<HTMLDivElement>(null)
+  const [headerHeight, setHeaderHeight] = React.useState(0)
 
-    updateColumns()
-    window.addEventListener("resize", updateColumns)
-    return () => window.removeEventListener("resize", updateColumns)
-  }, [])
+  React.useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const update = () => setHeaderHeight(el.offsetHeight)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [bubbleCount])
+
+  // Top padding of the grid below the header (the header's own padding is
+  // included in its measured height).
+  const GRID_PADDING = 8
+  const { columns, size, fitsViewport, availableHeight } = useBubbleLayout({
+    bubbleCount: bubbleCount ?? 0,
+    displayMode,
+    containerRef: gridContainerRef,
+    reservedHeight: headerHeight + GRID_PADDING + CONTROLS_RESERVE,
+  })
+
+  // Shifted odd rows only need a half-bubble of room when one reaches the last
+  // column; otherwise reserving it would pull the clump off centre.
+  const hasOddRows = needsHalfStep(bubbleCount ?? 0, columns)
+
+  // Outside inline mode, when the sheet doesn't fill the viewport, push it down
+  // so the clump sits at the vertical centre of the whole viewport (not just
+  // the space under the header), without ever crowding the bottom controls.
+  let gridOffset = 0
+  if (fitsViewport && displayMode !== "inline" && bubbleCount) {
+    const height = gridHeight(bubbleCount, columns, size)
+    const slack = Math.max(0, availableHeight - height)
+    const centred =
+      (availableHeight +
+        CONTROLS_RESERVE -
+        headerHeight -
+        GRID_PADDING -
+        height) /
+      2
+    gridOffset = Math.min(slack, Math.max(0, centred))
+  }
 
   return (
-    <Layout className="p-6">
-      <style>{bubbleStyles}</style>
-
+    <Layout className="bw-root">
       {bubbleCount ? (
-        <div className="bg-[#e0e0e0]">
+        <div
+          className={`flex flex-col bw-fill ${isComplete ? "bw-fill-complete" : ""}`}
+        >
           {/* Popped bubbles tracker */}
-          <div className="sticky top-0 p-4">
+          <div
+            ref={headerRef}
+            className={`bw-blurrable sticky top-0 z-10 ${isComplete ? "bw-blurred" : ""}`}
+            aria-hidden={isComplete || undefined}
+            style={{
+              padding: "var(--bw-pad) var(--bw-pad) calc(var(--bw-pad) * 0.5)",
+            }}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Bubbles</p>
-                <p className="text-3xl font-bold text-black">{bubbleCount}</p>
+                <p className="text-sm bw-muted">Total Bubbles</p>
+                <p className="text-3xl font-bold bw-strong">{bubbleCount}</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600">Popped</p>
-                <p className="text-3xl font-bold text-black">
+                <p className="text-sm bw-muted">Popped</p>
+                <p className="text-3xl font-bold bw-strong">
                   {poppedBubbles.size}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-600">Remaining</p>
-                <p className="text-3xl font-bold text-black">
+                <p className="text-sm bw-muted">Remaining</p>
+                <p className="text-3xl font-bold bw-strong">
                   {bubbleCount - poppedBubbles.size}
                 </p>
               </div>
             </div>
-            {poppedBubbles.size === bubbleCount && (
-              <div className="mt-3 p-2 text-center">
-                <p className="text-sm font-semibold text-black mb-4">
-                  All bubbles popped! Great job!
-                </p>
-                <button
-                  className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-colors"
-                  onClick={handleNewBubbleWrap}
-                >
-                  New Bubble Wrap
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Bubble wrap grid */}
-          <div className="relative p-4 pr-[calc(1rem+8.33%)] sm:pr-[calc(1rem+6.25%)] md:pr-[calc(1rem+5%)] lg:pr-[calc(1rem+4.17%)] pb-20 bg-[#e0e0e0]">
-            {/* Display mode buttons */}
-            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 z-50">
-              {/* Picture-in-picture button */}
-              <button
-                onClick={handlePictureInPicture}
-                className="w-8 h-8 bg-white/40 hover:bg-white shadow-md hover:shadow-lg rounded-full transition-all flex items-center justify-center border border-gray-200"
-                aria-label="Enter picture-in-picture"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-4 h-4 text-gray-700"
-                >
-                  <rect x="2" y="2" width="16" height="12" rx="2" />
-                  <rect x="14" y="14" width="8" height="8" rx="2" />
-                </svg>
-              </button>
-              {/* Fullscreen button */}
-              <button
-                onClick={handleFullscreen}
-                className="w-8 h-8 bg-white/40 hover:bg-white shadow-md hover:shadow-lg rounded-full transition-all flex items-center justify-center border border-gray-200"
-                aria-label="Enter fullscreen"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-4 h-4 text-gray-700"
-                >
-                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                </svg>
-              </button>
-            </div>
-            <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
+          <div
+            ref={gridContainerRef}
+            className={`bw-blurrable flex-1 ${isComplete ? "bw-blurred" : ""}`}
+            aria-hidden={isComplete || undefined}
+            style={{
+              padding: `${GRID_PADDING}px var(--bw-pad) ${CONTROLS_RESERVE}px`,
+            }}
+            data-fits-viewport={fitsViewport}
+          >
+            <div
+              key={sheetGeneration}
+              className="grid justify-center"
+              style={{
+                gridTemplateColumns: `repeat(${columns}, ${size}px)`,
+                gap: BUBBLE_GAP,
+                // Odd rows shift right by half a bubble; keep room for them so
+                // the clump as a whole stays horizontally centred.
+                paddingRight: hasOddRows ? size / 2 : 0,
+                marginTop: gridOffset,
+              }}
+            >
               {Array.from({ length: bubbleCount }).map((_, index) => {
+                const inflateStep = inflateStepMs(bubbleCount)
                 const isPopped = poppedBubbles.has(index)
-                // Calculate row based on current column count
                 const row = Math.floor(index / columns)
                 const isOddRow = row % 2 === 1
 
                 return (
                   <button
                     key={index}
-                    onClick={() => !isPopped && handleBubblePop(index)}
+                    onClick={(e) =>
+                      !isPopped && handleBubblePop(index, e.currentTarget)
+                    }
                     disabled={isPopped}
-                    className={`
-                      bubble-button aspect-square transition-all duration-300 ease-out
-                      ${
-                        isPopped
-                          ? "popped opacity-60 cursor-not-allowed"
-                          : "cursor-pointer"
-                      }
-                    `}
+                    className={`bubble-button bw-inflate aspect-square transition-all duration-300 ease-out ${
+                      isPopped
+                        ? "popped opacity-60 cursor-not-allowed"
+                        : "cursor-pointer"
+                    }`}
                     style={{
-                      position: "relative",
-                      borderRadius: "50%",
-                      background: isPopped
-                        ? "linear-gradient(145deg, #cacaca, #f0f0f0)"
-                        : "linear-gradient(145deg, #f0f0f0, #cacaca)",
-                      boxShadow: isPopped
-                        ? "6px 6px 12px #cecece, -6px -6px 12px #f2f2f2"
-                        : "12px 12px 24px #b3b3b3, -12px -12px 24px #ffffff",
-                      transform: isOddRow
-                        ? `translateX(50%) ${isPopped ? "" : ""}`
-                        : isPopped
-                          ? ""
-                          : undefined,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isPopped) {
-                        e.currentTarget.style.transform = isOddRow
-                          ? "translateX(50%)"
-                          : ""
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isPopped) {
-                        e.currentTarget.style.transform = isOddRow
-                          ? "translateX(50%)"
-                          : ""
-                      }
-                    }}
-                    onMouseDown={(e) => {
-                      if (!isPopped) {
-                        e.currentTarget.style.transform = isOddRow
-                          ? "translateX(50%)"
-                          : ""
-                      }
-                    }}
-                    onMouseUp={(e) => {
-                      if (!isPopped) {
-                        e.currentTarget.style.transform = isOddRow
-                          ? "translateX(50%)"
-                          : ""
-                      }
+                      transform: isOddRow ? "translateX(50%)" : undefined,
+                      animationDelay: `${Math.round(index * inflateStep)}ms`,
                     }}
                     aria-label={
                       isPopped
@@ -426,12 +487,28 @@ export function BubbleWrap() {
               })}
             </div>
           </div>
+
+          {/* Display mode controls: one button per mode the host offers, fixed
+              to the viewport bottom so they stay reachable while scrolling. */}
+          <DisplayModeControls
+            className={`bw-blurrable ${isComplete ? "bw-blurred" : ""}`}
+          />
+
+          {isComplete && (
+            <CompletionCard
+              key={sheetGeneration}
+              bubbleCount={bubbleCount}
+              elapsedMs={elapsedMs}
+              onNewSheet={handleNewBubbleWrap}
+              busy={creatingSheet}
+            />
+          )}
+
+          <PopParticles ref={particlesRef} />
         </div>
       ) : (
         <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-gray-500 animate-pulse">
-            Waiting for bubble count...
-          </p>
+          <p className="bw-muted animate-pulse">Waiting for bubble count...</p>
         </div>
       )}
     </Layout>

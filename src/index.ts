@@ -3,8 +3,8 @@ import cors from "cors"
 import chalk from "chalk"
 import path from "path"
 import { fileURLToPath } from "url"
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
+import { NodeStreamableHTTPServerTransport as StreamableHTTPServerTransport } from "@modelcontextprotocol/node"
+import { isInitializeRequest } from "@modelcontextprotocol/server"
 import { randomUUID } from "crypto"
 import {
   logClientMessage,
@@ -304,5 +304,7 @@ app.listen(port, () => {
   logServerStarted(port)
   console.log(chalk.blue(`\n📍 Endpoints:`))
   console.log(chalk.gray(`   /mcp     - OpenAI Apps SDK mode (original)`))
-  console.log(chalk.green(`   /mcp-app - SEP-1865 MCP Apps mode (new)`))
+  console.log(
+    chalk.green(`   /mcp-app - MCP Apps mode (SEP-1865, ext-apps SDK)`)
+  )
 })
