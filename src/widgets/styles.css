@@ -62,35 +62,35 @@ body {
   background: var(--bw-bg);
   color: var(--bw-text);
 }
-/* Only fill the frame when the host gives us a fixed one. In inline mode the
- * host sizes the frame from our reported content height, so a 100% minimum
- * would make the document at least as tall as the frame already is: after a
- * trip to fullscreen, inline could never shrink back. */
-html:not([data-display-mode="inline"]),
-html:not([data-display-mode="inline"]) body {
-  min-height: 100%;
+/* Only fill the frame when the host gives us a fixed one (`data-frame` and
+ * `--bw-vh` are set by Layout). In inline mode, and in a picture-in-picture
+ * window whose height we don't know, the host sizes the frame from our
+ * reported content height, so a frame-relative minimum would make the document
+ * at least as tall as the frame already is and it could never shrink back.
+ * `--bw-vh` is the host-reported visible height when available, which also
+ * lets a too-tall frame (e.g. Goose's pip after fullscreen) shrink to fit. */
+html[data-frame="fixed"],
+html[data-frame="fixed"] body {
+  min-height: var(--bw-vh, 100vh);
 }
 
-/* Inline: the host sizes the iframe to our content (ext-apps autoResize), so a
- * scrollbar would only ever flicker. Every other mode hands us a fixed
- * viewport, so we must be allowed to scroll it ourselves. */
-html[data-display-mode="inline"],
-html[data-display-mode="inline"] body {
+/* Content-sized frames: the host sizes the iframe to our content (ext-apps
+ * autoResize), so a scrollbar would only ever flicker. Fixed frames must be
+ * allowed to scroll themselves. */
+html:not([data-frame="fixed"]),
+html:not([data-frame="fixed"]) body {
   overflow: hidden;
 }
-html:not([data-display-mode="inline"]) body {
+html[data-frame="fixed"] body {
   overflow: auto;
 }
 
-/* Fill the viewport only when the host gives us a fixed one. In inline mode the
- * iframe tracks our content height, so a 100vh minimum would just lock in
- * whatever height the host started with. */
-html:not([data-display-mode="inline"]) .bw-fill {
-  min-height: 100vh;
+html[data-frame="fixed"] .bw-fill {
+  min-height: var(--bw-vh, 100vh);
 }
-/* Inline, a small sheet can be shorter than the completion overlay; give the
- * board enough height while the overlay is showing. */
-html[data-display-mode="inline"] .bw-fill.bw-fill-complete {
+/* In a content-sized frame a small sheet can be shorter than the completion
+ * overlay; give the board enough height while the overlay is showing. */
+html:not([data-frame="fixed"]) .bw-fill.bw-fill-complete {
   min-height: 340px;
 }
 

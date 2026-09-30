@@ -7,7 +7,7 @@ import {
 } from "../components/PopParticles.js"
 import { useOpenAiGlobal } from "../hooks/use-openai-global.js"
 import { isOpenAiHost, useMcpApp } from "../hooks/use-mcp-app.js"
-import { useDisplayMode } from "../hooks/use-display-mode.js"
+import { useViewport } from "../hooks/use-viewport.js"
 import {
   BUBBLE_GAP,
   gridHeight,
@@ -352,7 +352,7 @@ export function BubbleWrap() {
   }, [bubbleCount])
 
   // Size the grid to the container (and, outside inline mode, to the viewport)
-  const { displayMode } = useDisplayMode()
+  const viewport = useViewport()
   const gridContainerRef = React.useRef<HTMLDivElement>(null)
   const headerRef = React.useRef<HTMLDivElement>(null)
   const [headerHeight, setHeaderHeight] = React.useState(0)
@@ -372,7 +372,8 @@ export function BubbleWrap() {
   const GRID_PADDING = 8
   const { columns, size, fitsViewport, availableHeight } = useBubbleLayout({
     bubbleCount: bubbleCount ?? 0,
-    displayMode,
+    fitHeight: viewport.fixed,
+    viewportHeight: viewport.height,
     containerRef: gridContainerRef,
     reservedHeight: headerHeight + GRID_PADDING + CONTROLS_RESERVE,
   })
@@ -381,11 +382,11 @@ export function BubbleWrap() {
   // column; otherwise reserving it would pull the clump off centre.
   const hasOddRows = needsHalfStep(bubbleCount ?? 0, columns)
 
-  // Outside inline mode, when the sheet doesn't fill the viewport, push it down
+  // In a fixed-height frame, when the sheet doesn't fill the viewport, push it down
   // so the clump sits at the vertical centre of the whole viewport (not just
   // the space under the header), without ever crowding the bottom controls.
   let gridOffset = 0
-  if (fitsViewport && displayMode !== "inline" && bubbleCount) {
+  if (fitsViewport && viewport.fixed && bubbleCount) {
     const height = gridHeight(bubbleCount, columns, size)
     const slack = Math.max(0, availableHeight - height)
     const centred =

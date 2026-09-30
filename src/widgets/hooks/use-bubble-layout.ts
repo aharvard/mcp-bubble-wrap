@@ -3,17 +3,17 @@
  *
  * - Every mode: columns are derived from the measured container width and a
  *   comfortable target bubble size, instead of window-width breakpoints.
- * - Non-inline modes (fullscreen, pip, split-*, standalone): the host hands us a
+ * - Fixed-height frames (fullscreen, split-*, standalone, pip when the host
+ *   reports its height; see use-viewport.ts): the host hands us a
  *   fixed viewport, so we additionally try to pick the largest bubble size at
  *   which *all* bubbles fit in the available height. When that's possible the
  *   page never needs to scroll; when it isn't (tiny viewport, huge count) we
  *   fall back to the width-based layout and let the document scroll.
- * - Inline mode: the iframe grows with the content (autoResize), so height
+ * - Content-sized frames (inline): the iframe grows with the content (autoResize), so height
  *   fitting is meaningless and only the width rule applies.
  */
 
 import { useEffect, useState, type RefObject } from "react"
-import type { DisplayMode } from "../../shared/display-modes"
 
 export const BUBBLE_GAP = 8
 const TARGET_BUBBLE = 56
@@ -59,7 +59,10 @@ export function gridHeight(
 
 interface Options {
   bubbleCount: number
-  displayMode: DisplayMode
+  /** Fit the grid to the viewport height (fixed-height frames only). */
+  fitHeight: boolean
+  /** Visible viewport height from the host, or null for `window.innerHeight`. */
+  viewportHeight: number | null
   /** Element the grid lives in; its content width is the layout width. */
   containerRef: RefObject<HTMLElement | null>
   /** Vertical space (px) that is *not* available to the grid: header, controls, padding. */
@@ -131,7 +134,8 @@ export function computeBubbleLayout(
 
 export function useBubbleLayout({
   bubbleCount,
-  displayMode,
+  fitHeight,
+  viewportHeight,
   containerRef,
   reservedHeight,
 }: Options): BubbleLayout {
@@ -143,15 +147,13 @@ export function useBubbleLayout({
     const el = containerRef.current
     if (!el) return
 
-    const fitHeight = displayMode !== "inline"
-
     const measure = () => {
       const styles = getComputedStyle(el)
       const width =
         el.clientWidth -
         parseFloat(styles.paddingLeft) -
         parseFloat(styles.paddingRight)
-      const height = window.innerHeight - reservedHeight
+      const height = (viewportHeight ?? window.innerHeight) - reservedHeight
       setLayout((current) => {
         const next = computeBubbleLayout(width, height, bubbleCount, fitHeight)
         return current.columns === next.columns &&
@@ -171,7 +173,7 @@ export function useBubbleLayout({
       observer.disconnect()
       window.removeEventListener("resize", measure)
     }
-  }, [bubbleCount, displayMode, containerRef, reservedHeight])
+  }, [bubbleCount, fitHeight, viewportHeight, containerRef, reservedHeight])
 
   return layout
 }

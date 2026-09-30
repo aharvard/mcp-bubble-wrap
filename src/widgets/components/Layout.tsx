@@ -3,6 +3,7 @@ import { useOpenAiGlobal } from "../hooks/use-openai-global"
 import { isOpenAiHost, useMcpApp } from "../hooks/use-mcp-app"
 import { useDisplayMode } from "../hooks/use-display-mode"
 import { useTheme } from "../hooks/use-theme"
+import { useViewport } from "../hooks/use-viewport"
 import "../styles.css"
 
 interface LayoutProps {
@@ -16,8 +17,10 @@ interface LayoutProps {
  *   `window.openai` or an MCP Apps host via ext-apps), falling back to the OS
  *   preference, and applies it to <html> (`dark` class + `data-theme`) so the
  *   whole document, not just this subtree, follows it
- * - Exposes the current display mode on <html> as `data-display-mode`, which
- *   the stylesheet uses to decide whether the document may scroll
+ * - Exposes the current display mode on <html> as `data-display-mode`, whether
+ *   the host gives us a fixed-height frame as `data-frame="fixed"`, and the
+ *   visible height as `--bw-vh`. The stylesheet uses these to decide whether
+ *   the document fills the frame and may scroll
  * - Reports size changes to mcp-ui hosts (MCP Apps hosts are handled by the
  *   ext-apps SDK's auto-resize)
  */
@@ -27,6 +30,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, className }) => {
   const { hostContext, isConnected } = useMcpApp()
   const { displayMode, availableDisplayModes } = useDisplayMode()
   const { theme, source: themeSource } = useTheme()
+  const viewport = useViewport()
 
   // inspect these values to see what the host is passing in
   console.log("[Layout] host state", {
@@ -45,7 +49,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, className }) => {
     root.classList.toggle("dark", theme === "dark")
     root.dataset.theme = theme
     root.dataset.displayMode = displayMode
-  }, [theme, displayMode])
+    root.dataset.frame = viewport.fixed ? "fixed" : "content"
+    root.style.setProperty(
+      "--bw-vh",
+      viewport.height ? `${viewport.height}px` : "100vh"
+    )
+  }, [theme, displayMode, viewport.fixed, viewport.height])
 
   const mcpUiContainer = useRef<HTMLDivElement>(null)
 
